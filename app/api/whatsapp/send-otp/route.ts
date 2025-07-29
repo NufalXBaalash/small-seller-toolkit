@@ -15,6 +15,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 })
     }
 
+    // Check environment variables
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID
+
+    if (!accessToken || !phoneNumberId) {
+      console.error("Missing WhatsApp API credentials")
+      return NextResponse.json({ error: "WhatsApp API not configured" }, { status: 500 })
+    }
+
     // Check if there's already a recent OTP for this number
     const existingOTP = otpStorage.get(phoneNumber)
     if (existingOTP) {
@@ -33,8 +42,8 @@ export async function POST(request: NextRequest) {
     // Store OTP with 5-minute expiration
     otpStorage.set(phoneNumber, otp, 5)
 
-    // Simulate WhatsApp Business API call
-    const whatsappResponse = await simulateWhatsAppAPI(phoneNumber, otp)
+    // Send OTP via WhatsApp Business API
+    const whatsappResponse = await sendWhatsAppOTP(phoneNumber, otp)
 
     if (!whatsappResponse.success) {
       // Clean up stored OTP if sending failed
@@ -56,49 +65,59 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function simulateWhatsAppAPI(phoneNumber: string, otp: string) {
+async function sendWhatsAppOTP(phoneNumber: string, otp: string) {
   try {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const accessToken = process.env.WHATSAPP_ACCESS_TOKEN!
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID!
 
-    // In a real implementation, this would be:
-    /*
-    const response = await fetch('https://graph.facebook.com/v18.0/YOUR_PHONE_NUMBER_ID/messages', {
-      method: 'POST',
+    // For now, we'll send a simple text message since template messages require approval
+    // In production, you should create a message template in your WhatsApp Business account
+    const messageBody = `Your verification code is: ${otp}\n\nThis code will expire in 5 minutes.`
+
+    const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: phoneNumber,
-        type: 'template',
-        template: {
-          name: 'verification_code',
-          language: { code: 'en_US' },
-          components: [{
-            type: 'body',
-            parameters: [{ type: 'text', text: otp }]
-          }]
-        }
-      })
-    });
+        messaging_product: "whatsapp",
+        to: phoneNumber.replace("+", ""),
+        type: "text",
+        text: {
+          body: messageBody,
+        },
+      }),
+    })
 
     if (!response.ok) {
-      throw new Error(`WhatsApp API error: ${response.status}`);
+      const errorData = await response.text()
+      console.error("WhatsApp API error:", errorData)
+      
+      // Handle specific error cases
+      if (response.status === 401) {
+        throw new Error("Invalid WhatsApp access token")
+      } else if (response.status === 403) {
+        throw new Error("WhatsApp API permissions denied")
+      } else if (response.status === 400) {
+        throw new Error("Invalid phone number or message format")
+      }
+      
+      throw new Error(`WhatsApp API error: ${response.status}`)
     }
 
-    const data = await response.json();
-    return { success: true, messageId: data.messages[0].id };
-    */
+    const data = await response.json()
+    console.log("WhatsApp OTP sent successfully:", data)
 
-    // Simulate success response for demo
     return {
       success: true,
-      messageId: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      messageId: data.messages?.[0]?.id || `msg_${Date.now()}`,
     }
   } catch (error) {
-    console.error("WhatsApp API simulation error:", error)
-    return { success: false, error: error instanceof Error ? error.message : "Unknown error" }
+    console.error("WhatsApp API error:", error)
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    }
   }
 }
