@@ -205,8 +205,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string, userData: SignUpData) => {
     try {
       console.log("Starting signup process for:", email)
+      setLoading(true) // Set loading state at the beginning
 
-      const { data, error } = await supabase.auth.signUp({
+      // Set a timeout to ensure we don't get stuck in loading state
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Sign up timeout")), 15000)
+      })
+      
+      // First, sign up the user with Supabase Auth
+      const signUpPromise = supabase.auth.signUp({
         email,
         password,
         options: {
@@ -218,27 +225,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         },
       })
+      
+      // Race the sign up against the timeout
+      const { data, error } = await Promise.race([
+        signUpPromise,
+        timeoutPromise.then(() => {
+          console.warn("Sign up timed out")
+          return { data: null, error: { message: "Sign up timed out. Please try again." } }
+        })
+      ])
 
       if (error) {
         console.error("Signup error:", error)
         throw error
       }
 
+      if (!data || !data.user) {
+        throw new Error("Sign up failed: No user data returned")
+      }
+
       console.log("Signup successful:", data)
 
-      // Ensure the user profile is created in public.users table
-      // The trigger should handle this, but we'll also call createUserProfile as backup
-      if (data.user) {
+      // Explicitly create the user profile in the public.users table
+      // This is critical as the trigger may not be working properly
+      console.log("Creating user profile in public.users table")
+      
+      // Insert the user profile with a direct insert
+      const { error: profileError } = await supabase.from("users").insert({
+        id: data.user.id,
+        email: email,
+        first_name: userData.firstName,
+        last_name: userData.lastName,
+        business_name: userData.businessName || null,
+        phone_number: userData.phoneNumber || null,
+      })
+      
+      if (profileError) {
+        console.error("Error creating user profile with direct insert:", profileError)
+        
+        // If insert fails, try the createUserProfile function as backup
         try {
           await createUserProfile(data.user, userData)
-        } catch (profileError) {
-          console.error("Error creating user profile:", profileError)
+        } catch (backupError) {
+          console.error("Backup profile creation also failed:", backupError)
           // Don't throw here - the user was created successfully, profile can be fixed later
         }
+      } else {
+        console.log("User profile created successfully with direct insert")
       }
+      
+      return data.user
     } catch (error) {
       console.error("Sign up error:", error)
       throw error
+    } finally {
+      setLoading(false) // Always reset loading state
     }
   }
 
