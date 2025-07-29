@@ -12,7 +12,7 @@ interface AuthContextType {
   userProfile: UserProfile | null
   loading: boolean
   sessionChecked: boolean
-  signUp: (email: string, password: string, userData: SignUpData) => Promise<void>
+  signUp: (email: string, password: string, userData: SignUpData) => Promise<User>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   updateProfile: (data: Partial<UserProfile>) => Promise<void>
@@ -182,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error("Error fetching user profile:", error)
         // If profile doesn't exist (PGRST116), that's okay - user might need to complete signup or trigger hasn't fired yet
-        if (error.code !== "PGRST116") {
+        if ('code' in error && error.code !== "PGRST116") {
           console.error("Unexpected error:", error)
         }
         setUserProfile(null) // Ensure profile is null if not found or error
@@ -431,6 +431,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Sign in error:", error)
       setLoading(false) // Make sure to reset loading state on error
       throw error
+    } finally {
+      setLoading(false) // Always reset loading state regardless of success or failure
     }
   }
 
@@ -505,7 +507,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshSession,
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  // Type assertion to ensure value matches AuthContextType
+  return <AuthContext.Provider value={value as AuthContextType}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
