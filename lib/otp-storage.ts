@@ -3,16 +3,19 @@ interface OTPData {
   otp: string
   expiresAt: number
   attempts: number
+  createdAt: number
 }
 
 class OTPStorage {
   private storage: Map<string, OTPData> = new Map()
 
   set(phoneNumber: string, otp: string, expirationMinutes = 5): void {
+    const now = Date.now()
     this.storage.set(phoneNumber, {
       otp,
-      expiresAt: Date.now() + expirationMinutes * 60 * 1000,
+      expiresAt: now + expirationMinutes * 60 * 1000,
       attempts: 0,
+      createdAt: now,
     })
   }
 
@@ -34,11 +37,42 @@ class OTPStorage {
     if (!data) return false
 
     data.attempts += 1
+    
+    // Auto-delete if too many attempts
+    if (data.attempts >= 3) {
+      this.storage.delete(phoneNumber)
+    }
+    
     return true
   }
 
   delete(phoneNumber: string): void {
     this.storage.delete(phoneNumber)
+  }
+
+  // Get remaining time for an OTP
+  getRemainingTime(phoneNumber: string): number {
+    const data = this.get(phoneNumber)
+    if (!data) return 0
+    
+    const remaining = data.expiresAt - Date.now()
+    return Math.max(0, Math.ceil(remaining / 1000))
+  }
+
+  // Get remaining attempts for an OTP
+  getRemainingAttempts(phoneNumber: string): number {
+    const data = this.get(phoneNumber)
+    if (!data) return 0
+    
+    return Math.max(0, 3 - data.attempts)
+  }
+
+  // Check if OTP is valid (not expired and not exceeded attempts)
+  isValid(phoneNumber: string): boolean {
+    const data = this.get(phoneNumber)
+    if (!data) return false
+    
+    return data.attempts < 3
   }
 
   // Clean up expired entries periodically
@@ -49,6 +83,25 @@ class OTPStorage {
         this.storage.delete(phoneNumber)
       }
     }
+  }
+
+  // Get storage statistics (for debugging)
+  getStats(): { total: number; expired: number; valid: number } {
+    const now = Date.now()
+    let total = 0
+    let expired = 0
+    let valid = 0
+
+    for (const [_, data] of this.storage.entries()) {
+      total++
+      if (now > data.expiresAt) {
+        expired++
+      } else {
+        valid++
+      }
+    }
+
+    return { total, expired, valid }
   }
 }
 

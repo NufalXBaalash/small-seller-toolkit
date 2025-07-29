@@ -12,7 +12,9 @@ export async function POST(request: NextRequest) {
     // Validate phone number format
     const phoneRegex = /^\+[1-9]\d{1,14}$/
     if (!phoneRegex.test(phoneNumber)) {
-      return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 })
+      return NextResponse.json({ 
+        error: "Invalid phone number format. Please include country code (e.g., +1234567890)" 
+      }, { status: 400 })
     }
 
     // Check environment variables
@@ -21,16 +23,20 @@ export async function POST(request: NextRequest) {
 
     if (!accessToken || !phoneNumberId) {
       console.error("Missing WhatsApp API credentials")
-      return NextResponse.json({ error: "WhatsApp API not configured" }, { status: 500 })
+      return NextResponse.json({ 
+        error: "WhatsApp API not configured. Please contact support." 
+      }, { status: 500 })
     }
 
     // Check if there's already a recent OTP for this number
     const existingOTP = otpStorage.get(phoneNumber)
     if (existingOTP) {
+      const remainingTime = Math.ceil((existingOTP.expiresAt - Date.now()) / 1000)
       return NextResponse.json(
         {
           error: "OTP already sent. Please wait before requesting a new one.",
-          remainingTime: Math.ceil((existingOTP.expiresAt - Date.now()) / 1000),
+          remainingTime,
+          message: `Please wait ${Math.ceil(remainingTime / 60)} minutes before requesting a new OTP`
         },
         { status: 429 },
       )
@@ -48,7 +54,9 @@ export async function POST(request: NextRequest) {
     if (!whatsappResponse.success) {
       // Clean up stored OTP if sending failed
       otpStorage.delete(phoneNumber)
-      return NextResponse.json({ error: "Failed to send OTP via WhatsApp" }, { status: 500 })
+      return NextResponse.json({ 
+        error: whatsappResponse.error || "Failed to send OTP via WhatsApp" 
+      }, { status: 500 })
     }
 
     console.log(`OTP sent to ${phoneNumber}: ${otp}`) // For development
@@ -61,7 +69,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Error sending OTP:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Internal server error. Please try again." 
+    }, { status: 500 })
   }
 }
 
@@ -70,9 +80,17 @@ async function sendWhatsAppOTP(phoneNumber: string, otp: string) {
     const accessToken = process.env.WHATSAPP_ACCESS_TOKEN!
     const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID!
 
-    // For now, we'll send a simple text message since template messages require approval
-    // In production, you should create a message template in your WhatsApp Business account
-    const messageBody = `Your verification code is: ${otp}\n\nThis code will expire in 5 minutes.`
+    // Create a more professional message
+    const messageBody = `🔐 Sellio Verification Code
+
+Your verification code is: ${otp}
+
+This code will expire in 5 minutes.
+
+If you didn't request this code, please ignore this message.
+
+Thank you,
+The Sellio Team`
 
     const response = await fetch(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
       method: "POST",
@@ -94,16 +112,18 @@ async function sendWhatsAppOTP(phoneNumber: string, otp: string) {
       const errorData = await response.text()
       console.error("WhatsApp API error:", errorData)
       
-      // Handle specific error cases
+      // Handle specific error cases with user-friendly messages
       if (response.status === 401) {
-        throw new Error("Invalid WhatsApp access token")
+        throw new Error("Invalid WhatsApp access token. Please check your API configuration.")
       } else if (response.status === 403) {
-        throw new Error("WhatsApp API permissions denied")
+        throw new Error("WhatsApp API permissions denied. Please check your app permissions.")
       } else if (response.status === 400) {
-        throw new Error("Invalid phone number or message format")
+        throw new Error("Invalid phone number or message format. Please check the phone number.")
+      } else if (response.status === 429) {
+        throw new Error("Rate limit exceeded. Please wait a moment before trying again.")
       }
       
-      throw new Error(`WhatsApp API error: ${response.status}`)
+      throw new Error(`WhatsApp API error (${response.status}): ${errorData}`)
     }
 
     const data = await response.json()
@@ -117,7 +137,7 @@ async function sendWhatsAppOTP(phoneNumber: string, otp: string) {
     console.error("WhatsApp API error:", error)
     return { 
       success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
+      error: error instanceof Error ? error.message : "Failed to send message via WhatsApp" 
     }
   }
 }
