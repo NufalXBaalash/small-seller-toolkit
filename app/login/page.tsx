@@ -28,14 +28,36 @@ export default function LoginPage() {
     setIsLoading(true)
     setError("")
 
+    // Set a timeout to prevent infinite loading state
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false)
+      setError("Login request timed out. Please try again.")
+      toast({
+        title: "Sign in timed out",
+        description: "The request took too long to complete. Please try again.",
+        variant: "destructive",
+      })
+    }, 15000) // 15 second timeout
+
     try {
       await signIn(email, password)
+      
+      // Clear the timeout since login was successful
+      clearTimeout(timeoutId)
+      
       toast({
         title: "Welcome back!",
         description: "You have been successfully signed in.",
       })
-      router.push("/dashboard")
+      
+      // Add a small delay before redirecting to ensure auth state is updated
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 500)
     } catch (error: any) {
+      // Clear the timeout since we got a response
+      clearTimeout(timeoutId)
+      
       setError(error.message || "Failed to sign in")
       toast({
         title: "Sign in failed",
@@ -43,6 +65,8 @@ export default function LoginPage() {
         variant: "destructive",
       })
     } finally {
+      // Clear the timeout to prevent it from firing after we're done
+      clearTimeout(timeoutId)
       setIsLoading(false)
     }
   }

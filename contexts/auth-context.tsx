@@ -11,10 +11,12 @@ interface AuthContextType {
   user: User | null
   userProfile: UserProfile | null
   loading: boolean
+  sessionChecked: boolean
   signUp: (email: string, password: string, userData: SignUpData) => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   updateProfile: (data: Partial<UserProfile>) => Promise<void>
+  refreshSession: () => Promise<boolean>
 }
 
 interface UserProfile {
@@ -41,24 +43,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionChecked, setSessionChecked] = useState(false)
   const router = useRouter()
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchUserProfile(session.user.id)
-      } else {
-        setLoading(false)
+  // Function to refresh the session
+  const refreshSession = async () => {
+    try {
+      console.log("Refreshing session...")
+      const { data, error } = await supabase.auth.refreshSession()
+      
+      if (error) {
+        console.error("Error refreshing session:", error)
+        return false
       }
-    })
-
+      
+      if (data.session) {
+        console.log("Session refreshed successfully")
+        return true
+      } else {
+        console.log("No session to refresh")
+        return false
+      }
+    } catch (error) {
+      console.error("Error in refreshSession:", error)
+      return false
+    }
+  }
+  
+  // Initialize auth and set up session refresh
+  useEffect(() => {
+    // Set loading state at the beginning
+    setLoading(true)
+    
+    // Get initial session
+    const initializeAuth = async () => {
+      try {
+        // Get the current session
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        console.log("Initial session check:", session ? "Session found" : "No session")
+        
+        // Set the user state
+        setUser(session?.user ?? null)
+        
+        // If we have a user, fetch their profile
+        if (session?.user) {
+          await fetchUserProfile(session.user.id)
+        } else {
+          setLoading(false)
+        }
+        
+        // Mark session as checked
+        setSessionChecked(true)
+      } catch (error) {
+        console.error("Error initializing auth:", error)
+        setLoading(false)
+        setSessionChecked(true)
+      }
+    }
+    
+    // Initialize auth
+    initializeAuth()
+    
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session?.user?.id)
+      
+      // Update user state
       setUser(session?.user ?? null)
 
       if (session?.user) {
@@ -74,11 +127,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe()
   }, [])
+  
+  // Set up periodic session refresh
+  useEffect(() => {
+    // Only start the refresh interval if we have a user
+    if (!user) return
+    
+    console.log("Setting up session refresh interval")
+    
+    // Refresh the session every 10 minutes to keep it active
+    const intervalId = setInterval(async () => {
+      const refreshed = await refreshSession()
+      console.log("Session refresh attempt result:", refreshed ? "Success" : "Failed")
+      
+      // If refresh failed and we thought we had a user, force a re-check
+      if (!refreshed && user) {
+        console.log("Session refresh failed, rechecking session...")
+        const { data } = await supabase.auth.getSession()
+        
+        if (!data.session) {
+          console.log("No valid session found, signing out...")
+          // Force sign out if no valid session
+          setUser(null)
+          setUserProfile(null)
+          router.push("/login")
+        }
+      }
+    }, 10 * 60 * 1000) // 10 minutes
+    
+    return () => clearInterval(intervalId)
+  }, [user, router])
 
   const fetchUserProfile = async (userId: string) => {
     try {
       console.log("Fetching profile for user:", userId)
-      const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
+      
+      // Set a timeout to ensure we don't get stuck in loading state
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Profile fetch timeout")), 5000)
+      })
+      
+      // Fetch the profile with a timeout
+      const profilePromise = supabase.from("users").select("*").eq("id", userId).single()
+      
+      // Race the fetch against the timeout
+      const { data, error } = await Promise.race([
+        profilePromise,
+        timeoutPromise.then(() => {
+          console.warn("Profile fetch timed out, continuing without profile")
+          return { data: null, error: { message: "Timeout" } }
+        })
+      ])
 
       if (error) {
         console.error("Error fetching user profile:", error)
@@ -87,14 +186,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error("Unexpected error:", error)
         }
         setUserProfile(null) // Ensure profile is null if not found or error
-      } else {
+      } else if (data) {
         console.log("Profile fetched successfully:", data)
         setUserProfile(data)
+      } else {
+        console.warn("No profile data returned")
+        setUserProfile(null)
       }
     } catch (error) {
       console.error("Error fetching user profile:", error)
       setUserProfile(null)
     } finally {
+      // Always set loading to false to prevent UI from being stuck
       setLoading(false)
     }
   }
@@ -234,10 +337,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       console.log("Signing in user:", email)
-      const { data, error } = await supabase.auth.signInWithPassword({
+      setLoading(true) // Set loading state at the beginning of sign in
+      
+      // Set a timeout to ensure we don't get stuck in loading state
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Sign in timeout")), 10000)
+      })
+      
+      // Attempt to sign in with a timeout
+      const signInPromise = supabase.auth.signInWithPassword({
         email,
         password,
       })
+      
+      // Race the sign in against the timeout
+      const { data, error } = await Promise.race([
+        signInPromise,
+        timeoutPromise.then(() => {
+          console.warn("Sign in timed out")
+          return { data: null, error: { message: "Sign in timed out. Please try again." } }
+        })
+      ])
 
       if (error) throw error
 
@@ -245,36 +365,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // After sign-in, ensure user profile exists in public.users
       // This handles cases where the trigger might not have run (e.g., social login, or old signups)
-      if (data.user) {
-        const { data: existingProfile } = await supabase.from("users").select("id").eq("id", data.user.id).single()
+      if (data?.user) {
+        try {
+          const { data: existingProfile } = await supabase.from("users").select("id").eq("id", data.user.id).single()
 
-        if (!existingProfile) {
-          console.log("No profile found in public.users, creating basic profile after sign-in.")
-          await createUserProfile(data.user, {
-            firstName: data.user.email?.split("@")[0] || "User",
-            lastName: "",
-            businessName: "",
-            phoneNumber: "",
-          })
+          if (!existingProfile) {
+            console.log("No profile found in public.users, creating basic profile after sign-in.")
+            await createUserProfile(data.user, {
+              firstName: data.user.email?.split("@")[0] || "User",
+              lastName: "",
+              businessName: "",
+              phoneNumber: "",
+            })
+          }
+        } catch (profileError) {
+          console.error("Error checking/creating profile after sign in:", profileError)
+          // Don't throw here - the user was signed in successfully, profile can be fixed later
         }
+      } else if (!error) {
+        // If we don't have an error but also don't have user data, something went wrong
+        throw new Error("Sign in failed: No user data returned")
       }
     } catch (error) {
       console.error("Sign in error:", error)
+      setLoading(false) // Make sure to reset loading state on error
       throw error
     }
   }
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
+      setLoading(true) // Set loading state to prevent UI flicker
+      
+      // Set a timeout to ensure we don't get stuck in loading state
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Sign out timeout")), 5000)
+      })
+      
+      // Attempt to sign out with a timeout
+      const signOutPromise = supabase.auth.signOut()
+      
+      // Race the sign out against the timeout
+      const { error } = await Promise.race([
+        signOutPromise,
+        timeoutPromise.then(() => {
+          console.warn("Sign out timed out, forcing client-side logout")
+          return { error: null } // Return a successful result to continue with client-side cleanup
+        })
+      ])
+      
       if (error) throw error
 
+      // Clear local state regardless of server response
+      setUser(null)
+      setUserProfile(null)
+      
+      // Add a small delay before redirecting to ensure state is updated
+      setTimeout(() => {
+        router.push("/")
+      }, 300)
+    } catch (error) {
+      console.error("Sign out error:", error)
+      
+      // Even if there's an error, clear local state and redirect
       setUser(null)
       setUserProfile(null)
       router.push("/")
-    } catch (error) {
-      console.error("Sign out error:", error)
-      throw error
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -298,10 +456,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     userProfile,
     loading,
+    sessionChecked,
     signUp,
     signIn,
     signOut,
     updateProfile,
+    refreshSession,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
