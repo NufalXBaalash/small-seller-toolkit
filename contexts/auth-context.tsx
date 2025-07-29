@@ -64,9 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         // If this is a new signup, the profile is created by the database trigger.
         // We just need to fetch it.
-        if (event === "SIGNED_UP") {
-          console.log("New user signed up, profile should be created by trigger. Fetching profile...")
-        }
+        console.log("Auth event:", event, "Fetching profile...")
         await fetchUserProfile(session.user.id)
       } else {
         setUserProfile(null)
@@ -125,9 +123,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log("Signup successful:", data)
 
-      // The public.users profile is now created by the database trigger (on_auth_user_created)
-      // We don't need to manually call createUserProfile here for the initial insert.
-      // The auth state change listener will fetch the profile once it's created.
+      // Ensure the user profile is created in public.users table
+      // The trigger should handle this, but we'll also call createUserProfile as backup
+      if (data.user) {
+        try {
+          await createUserProfile(data.user, userData)
+        } catch (profileError) {
+          console.error("Error creating user profile:", profileError)
+          // Don't throw here - the user was created successfully, profile can be fixed later
+        }
+      }
     } catch (error) {
       console.error("Sign up error:", error)
       throw error
