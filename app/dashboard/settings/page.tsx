@@ -49,7 +49,7 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <MessageSquare className="h-5 w-5 text-blue-600" />
+                  <MessageSquare className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
                   <p className="font-medium">Facebook Messenger</p>

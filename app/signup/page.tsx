@@ -106,7 +106,7 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
@@ -132,12 +132,12 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <MessageSquare className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">SellerKit</span>
+            <MessageSquare className="h-8 w-8 text-emerald-600" />
+            <span className="text-2xl font-bold text-gray-900">Sellio</span>
           </div>
           <CardTitle>Create Your Account</CardTitle>
           <CardDescription>Start automating your social selling business today</CardDescription>
@@ -262,11 +262,11 @@ export default function SignupPage() {
               <input type="checkbox" id="terms" className="rounded" required />
               <Label htmlFor="terms" className="text-sm">
                 I agree to the{" "}
-                <Link href="/terms" className="text-blue-600 hover:underline">
+                <Link href="/terms" className="text-emerald-600 hover:underline">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="/privacy" className="text-blue-600 hover:underline">
+                <Link href="/privacy" className="text-emerald-600 hover:underline">
                   Privacy Policy
                 </Link>
               </Label>
@@ -325,7 +325,7 @@ export default function SignupPage() {
 
           <div className="text-center text-sm mt-6">
             Already have an account?{" "}
-            <Link href="/login" className="text-blue-600 hover:underline">
+            <Link href="/login" className="text-emerald-600 hover:underline">
               Sign in
             </Link>
           </div>

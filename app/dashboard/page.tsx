@@ -164,7 +164,7 @@ export default function Dashboard() {
       case "order":
         return <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
       case "message":
-        return <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+        return <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
       case "alert":
         return <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
       default:
@@ -217,7 +217,7 @@ export default function Dashboard() {
           </Button>
           <Button
             onClick={() => setIsWhatsAppModalOpen(true)}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-medium text-sm sm:text-base"
+            className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 font-medium text-sm sm:text-base"
           >
             <Plus className="mr-2 h-4 w-4" />
             Connect WhatsApp
@@ -415,7 +415,7 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-2 border-dashed border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all space-y-3 sm:space-y-0">
               <div className="flex items-center space-x-3 sm:space-x-4">
                 <div className="h-10 w-10 sm:h-12 sm:w-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900 text-sm sm:text-base">Facebook Messenger</p>

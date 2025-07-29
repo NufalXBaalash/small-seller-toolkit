@@ -5,12 +5,12 @@ import Link from "next/link"
 
 export default function DemoPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <MessageSquare className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">SellerKit</span>
+            <MessageSquare className="h-8 w-8 text-emerald-600" />
+            <span className="text-2xl font-bold text-gray-900">Sellio</span>
           </div>
           <CardTitle>Demo Access</CardTitle>
           <CardDescription>Quick access to explore the Small Seller Toolkit dashboard and features</CardDescription>
@@ -60,7 +60,7 @@ export default function DemoPage() {
           </div>
 
           <div className="text-center">
-            <Link href="/" className="text-blue-600 hover:underline text-sm">
+            <Link href="/" className="text-emerald-600 hover:underline text-sm">
               ← Back to Landing Page
             </Link>
           </div>

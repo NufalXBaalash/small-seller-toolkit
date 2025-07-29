@@ -48,12 +48,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <MessageSquare className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">SellerKit</span>
+            <MessageSquare className="h-8 w-8 text-emerald-600" />
+            <span className="text-2xl font-bold text-gray-900">Sellio</span>
           </div>
           <CardTitle>Welcome Back</CardTitle>
           <CardDescription>Sign in to your account to continue managing your business</CardDescription>
@@ -106,7 +106,7 @@ export default function LoginPage() {
                   Remember me
                 </Label>
               </div>
-              <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+              <Link href="/forgot-password" className="text-sm text-emerald-600 hover:underline">
                 Forgot password?
               </Link>
             </div>
@@ -164,7 +164,7 @@ export default function LoginPage() {
 
           <div className="text-center text-sm mt-6">
             {"Don't have an account? "}
-            <Link href="/signup" className="text-blue-600 hover:underline">
+            <Link href="/signup" className="text-emerald-600 hover:underline">
               Sign up
             </Link>
           </div>

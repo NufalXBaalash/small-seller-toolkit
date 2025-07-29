@@ -178,7 +178,7 @@ export default function AnalyticsPage() {
               {topProducts.map((product, index) => (
                 <div key={product.name} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 text-sm font-medium">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 text-sm font-medium">
                       {index + 1}
                     </div>
                     <div>

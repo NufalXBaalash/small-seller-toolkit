@@ -323,7 +323,7 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Phone className="h-5 w-5 text-blue-600" />
+                  <Phone className="h-5 w-5 text-emerald-600" />
                   Step 1: Enter Your WhatsApp Business Number
                 </CardTitle>
                 <CardDescription>Enter the phone number associated with your WhatsApp Business account</CardDescription>
@@ -381,12 +381,12 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
                   </p>
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="bg-emerald-50 p-4 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <AlertCircle className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-blue-900">Important:</p>
-                      <p className="text-blue-700">
+                      <p className="font-medium text-emerald-900">Important:</p>
+                      <p className="text-emerald-700">
                         Make sure this number is registered with WhatsApp Business API and you have the access token
                         configured in your environment variables.
                       </p>
@@ -420,7 +420,7 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <QrCode className="h-5 w-5 text-blue-600" />
+                  <QrCode className="h-5 w-5 text-emerald-600" />
                   Step 2: Enter Verification Code
                 </CardTitle>
                 <CardDescription>
@@ -453,7 +453,7 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
                     variant="link"
                     onClick={resendOtp}
                     disabled={isLoading || !canResend}
-                    className="text-blue-600 p-0 h-auto"
+                    className="text-emerald-600 p-0 h-auto"
                   >
                     {!canResend ? (
                       <span className="flex items-center gap-1">
@@ -494,7 +494,7 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Smartphone className="h-5 w-5 text-blue-600" />
+                  <Smartphone className="h-5 w-5 text-emerald-600" />
                   Step 3: Business Information
                 </CardTitle>
                 <CardDescription>Set up your business profile for WhatsApp Business</CardDescription>
@@ -513,7 +513,7 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
                 </div>
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <AlertCircle className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
                       <p className="font-medium text-blue-900">Important:</p>
                       <p className="text-blue-700">
@@ -551,7 +551,7 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-blue-600" />
+                  <Settings className="h-5 w-5 text-emerald-600" />
                   Step 4: API Configuration
                 </CardTitle>
                 <CardDescription>Your webhook is configured and ready to receive messages</CardDescription>
