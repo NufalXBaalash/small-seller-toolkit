@@ -2,8 +2,15 @@
 CREATE OR REPLACE FUNCTION public.create_profile_for_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.users (id, email)
-  VALUES (NEW.id, NEW.email);
+  INSERT INTO public.users (id, email, first_name, last_name, business_name, phone_number)
+  VALUES (
+    NEW.id, 
+    NEW.email,
+    NEW.raw_user_meta_data->>'first_name',
+    NEW.raw_user_meta_data->>'last_name',
+    NEW.raw_user_meta_data->>'business_name',
+    NEW.raw_user_meta_data->>'phone_number'
+  );
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
