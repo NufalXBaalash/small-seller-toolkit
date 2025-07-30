@@ -230,26 +230,26 @@ export default function Dashboard() {
   const getActivityIcon = (type: string, status: string) => {
     switch (type) {
       case "order":
-        return <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+        return <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-success" />
       case "message":
-        return <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+        return <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-primary" />
       case "alert":
-        return <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
+        return <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-secondary" />
       default:
-        return <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-gray-600" />
+        return <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-neutral-dark" />
     }
   }
 
   const getActivityBgColor = (type: string) => {
     switch (type) {
       case "order":
-        return "bg-green-50"
+        return "bg-sellio-neutral-light"
       case "message":
-        return "bg-blue-50"
+        return "bg-sellio-neutral-light"
       case "alert":
-        return "bg-orange-50"
+        return "bg-sellio-neutral-light"
       default:
-        return "bg-gray-50"
+        return "bg-sellio-neutral-light"
     }
   }
 
@@ -259,10 +259,10 @@ export default function Dashboard() {
       <div className="flex-1 space-y-6 sm:space-y-8 p-4 sm:p-6 md:p-8">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
-            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h2>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <Button onClick={fetchDashboardData} className="bg-blue-600 hover:bg-blue-700">
+            <AlertCircle className="h-8 w-8 text-sellio-danger mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-sellio-neutral-dark mb-2">Something went wrong</h2>
+            <p className="text-sellio-neutral-dark mb-4">{error}</p>
+            <Button onClick={fetchDashboardData} className="bg-sellio-primary hover:bg-sellio-primary/90 font-medium text-sm sm:text-base text-white">
               Try Again
             </Button>
           </div>
@@ -277,7 +277,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading your dashboard...</p>
+            <p className="text-sellio-neutral-dark">Loading your dashboard...</p>
           </div>
         </div>
       </div>
@@ -289,21 +289,21 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-sellio-neutral-dark">
             Good morning, {userProfile?.first_name || "there"}! 👋
           </h1>
-          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+          <p className="text-sellio-neutral-dark mt-1 sm:mt-2 text-sm sm:text-base">
             Here's what's happening with your business today
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-          <Button variant="outline" className="font-medium bg-transparent text-sm sm:text-base">
+          <Button variant="outline" className="font-medium bg-transparent text-sm sm:text-base text-sellio-primary border-sellio-primary">
             <Download className="mr-2 h-4 w-4" />
             Export Data
           </Button>
           <Button
             onClick={() => setIsWhatsAppModalOpen(true)}
-            className="bg-gradient-to-r from-navy-600 to-navy-700 hover:from-navy-700 hover:to-navy-800 font-medium text-sm sm:text-base"
+            className="bg-sellio-primary hover:bg-sellio-primary/90 font-medium text-sm sm:text-base text-white"
           >
             <Plus className="mr-2 h-4 w-4" />
             Connect WhatsApp
@@ -313,72 +313,72 @@ export default function Dashboard() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-blue-50 hover:shadow-xl transition-all">
+        <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</CardTitle>
-            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-neutral-dark">Total Revenue</CardTitle>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-success rounded-xl flex items-center justify-center">
               <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+            <div className="text-2xl sm:text-3xl font-bold text-sellio-neutral-dark">
               ${(stats?.totalRevenue || 0).toFixed(2)}
             </div>
-            <div className="flex items-center text-xs sm:text-sm text-green-600 mt-1 sm:mt-2">
+            <div className="flex items-center text-xs sm:text-sm text-sellio-success mt-1 sm:mt-2">
               <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
               <span className="font-medium">+12.5%</span>
-              <span className="text-gray-500 ml-1">from last month</span>
+              <span className="text-sellio-neutral-dark ml-1">from last month</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-purple-50 hover:shadow-xl transition-all">
+        <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Orders</CardTitle>
-            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-neutral-dark">Orders</CardTitle>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-primary rounded-xl flex items-center justify-center">
               <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stats?.totalOrders || 0}</div>
-            <div className="flex items-center text-xs sm:text-sm text-green-600 mt-1 sm:mt-2">
+            <div className="text-2xl sm:text-3xl font-bold text-sellio-neutral-dark">{stats?.totalOrders || 0}</div>
+            <div className="flex items-center text-xs sm:text-sm text-sellio-success mt-1 sm:mt-2">
               <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
               <span className="font-medium">+{stats?.totalOrders || 0}</span>
-              <span className="text-gray-500 ml-1">total orders</span>
+              <span className="text-sellio-neutral-dark ml-1">total orders</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-orange-50 hover:shadow-xl transition-all">
+        <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Active Chats</CardTitle>
-            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
+            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-neutral-dark">Active Chats</CardTitle>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-secondary rounded-xl flex items-center justify-center">
               <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stats?.activeChats || 0}</div>
-            <div className="flex items-center text-xs sm:text-sm text-orange-600 mt-1 sm:mt-2">
+            <div className="text-2xl sm:text-3xl font-bold text-sellio-neutral-dark">{stats?.activeChats || 0}</div>
+            <div className="flex items-center text-xs sm:text-sm text-sellio-secondary mt-1 sm:mt-2">
               <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
               <span className="font-medium">{stats?.activeChats || 0} pending</span>
-              <span className="text-gray-500 ml-1">responses</span>
+              <span className="text-sellio-neutral-dark ml-1">responses</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-pink-50 hover:shadow-xl transition-all">
+        <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Customers</CardTitle>
-            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl flex items-center justify-center">
+            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-neutral-dark">Customers</CardTitle>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-accent rounded-xl flex items-center justify-center">
               <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stats?.totalCustomers || 0}</div>
-            <div className="flex items-center text-xs sm:text-sm text-green-600 mt-1 sm:mt-2">
+            <div className="text-2xl sm:text-3xl font-bold text-sellio-neutral-dark">{stats?.totalCustomers || 0}</div>
+            <div className="flex items-center text-xs sm:text-sm text-sellio-success mt-1 sm:mt-2">
               <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
               <span className="font-medium">+{stats?.totalCustomers || 0} total</span>
-              <span className="text-gray-500 ml-1">customers</span>
+              <span className="text-sellio-neutral-dark ml-1">customers</span>
             </div>
           </CardContent>
         </Card>
@@ -395,7 +395,7 @@ export default function Dashboard() {
                   Latest orders and customer interactions
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm" className="self-start sm:self-auto bg-transparent">
+              <Button variant="outline" size="sm" className="self-start sm:self-auto bg-transparent text-sellio-primary border-sellio-primary">
                 <Eye className="mr-2 h-4 w-4" />
                 View All
               </Button>
@@ -406,17 +406,17 @@ export default function Dashboard() {
               stats.recentActivity.map((activity) => (
                 <div
                   key={activity.id}
-                  className={`flex items-start sm:items-center space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-xl ${getActivityBgColor(activity.type)}`}
+                  className={`flex items-start sm:items-center space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-xl bg-sellio-neutral-light`}
                 >
                   <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-white flex-shrink-0">
                     {getActivityIcon(activity.type, activity.status)}
                   </div>
                   <div className="flex-1 space-y-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm sm:text-base">{activity.title}</p>
-                    <p className="text-gray-600 text-xs sm:text-sm">{activity.description}</p>
+                    <p className="font-medium text-sellio-neutral-dark text-sm sm:text-base">{activity.title}</p>
+                    <p className="text-sellio-neutral-dark text-xs sm:text-sm">{activity.description}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-xs bg-sellio-secondary text-sellio-neutral-dark">
                       {activity.time}
                     </Badge>
                   </div>
@@ -424,8 +424,8 @@ export default function Dashboard() {
               ))
             ) : (
               <div className="text-center py-8">
-                <p className="text-gray-500">No recent activity</p>
-                <p className="text-sm text-gray-400 mt-1">Start by adding products or connecting WhatsApp</p>
+                <p className="text-sellio-neutral-dark">No recent activity</p>
+                <p className="text-sm text-sellio-neutral-dark mt-1">Start by adding products or connecting WhatsApp</p>
               </div>
             )}
           </CardContent>
@@ -439,28 +439,28 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-3 sm:space-y-4">
             <Button
-              className="w-full justify-start h-10 sm:h-12 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 text-blue-700 border-blue-200 text-sm sm:text-base"
+              className="w-full justify-start h-10 sm:h-12 bg-sellio-accent text-white border-sellio-accent text-sm sm:text-base"
               variant="outline"
             >
               <Package className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               Add New Product
             </Button>
             <Button
-              className="w-full justify-start h-10 sm:h-12 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 text-green-700 border-green-200 text-sm sm:text-base"
+              className="w-full justify-start h-10 sm:h-12 bg-sellio-success text-white border-sellio-success text-sm sm:text-base"
               variant="outline"
             >
               <Zap className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               Create Auto-Reply
             </Button>
             <Button
-              className="w-full justify-start h-10 sm:h-12 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 text-purple-700 border-purple-200 text-sm sm:text-base"
+              className="w-full justify-start h-10 sm:h-12 bg-sellio-secondary text-sellio-neutral-dark border-sellio-secondary text-sm sm:text-base"
               variant="outline"
             >
               <Users className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               Export Customer List
             </Button>
             <Button
-              className="w-full justify-start h-10 sm:h-12 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 text-orange-700 border-orange-200 text-sm sm:text-base"
+              className="w-full justify-start h-10 sm:h-12 bg-sellio-primary text-white border-sellio-primary text-sm sm:text-base"
               variant="outline"
             >
               <TrendingUp className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
@@ -480,35 +480,35 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-2 border-dashed border-gray-200 rounded-xl hover:border-green-300 hover:bg-green-50 transition-all space-y-3 sm:space-y-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-2 border-dashed border-sellio-primary rounded-xl hover:border-sellio-success hover:bg-sellio-success/10 transition-all space-y-3 sm:space-y-0">
               <div className="flex items-center space-x-3 sm:space-x-4">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-sellio-success rounded-xl flex items-center justify-center flex-shrink-0">
+                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-success" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 text-sm sm:text-base">WhatsApp Business</p>
-                  <p className="text-gray-600 text-xs sm:text-sm">Connect your WhatsApp account</p>
+                  <p className="font-semibold text-sellio-neutral-dark text-sm sm:text-base">WhatsApp Business</p>
+                  <p className="text-sellio-neutral-dark text-xs sm:text-sm">Connect your WhatsApp account</p>
                 </div>
               </div>
               <Button
                 onClick={() => setIsWhatsAppModalOpen(true)}
-                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto text-sm sm:text-base"
+                className="bg-sellio-success hover:bg-sellio-success/90 w-full sm:w-auto text-sm sm:text-base text-white"
               >
                 Connect
               </Button>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-2 border-dashed border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all space-y-3 sm:space-y-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-2 border-dashed border-sellio-accent rounded-xl hover:border-sellio-accent hover:bg-sellio-accent/10 transition-all space-y-3 sm:space-y-0">
               <div className="flex items-center space-x-3 sm:space-x-4">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-sellio-accent rounded-xl flex items-center justify-center flex-shrink-0">
+                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900 text-sm sm:text-base">Facebook Messenger</p>
-                  <p className="text-gray-600 text-xs sm:text-sm">Connect your Facebook Page</p>
+                  <p className="font-semibold text-sellio-neutral-dark text-sm sm:text-base">Facebook Messenger</p>
+                  <p className="text-sellio-neutral-dark text-xs sm:text-sm">Connect your Facebook Page</p>
                 </div>
               </div>
-              <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto text-sm sm:text-base">Connect</Button>
+              <Button className="bg-sellio-accent hover:bg-sellio-accent/90 w-full sm:w-auto text-sm sm:text-base text-white">Connect</Button>
             </div>
           </div>
         </CardContent>

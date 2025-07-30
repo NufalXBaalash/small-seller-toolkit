@@ -75,35 +75,57 @@ const config: Config = {
   				'800': '#243b53',
   				'900': '#102a43',
   				'950': '#0a1f2e'
-  			}
-  		},
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
-  		},
-  		keyframes: {
-  			'accordion-down': {
-  				from: {
-  					height: '0'
-  				},
-  				to: {
-  					height: 'var(--radix-accordion-content-height)'
-  				}
   			},
-  			'accordion-up': {
-  				from: {
-  					height: 'var(--radix-accordion-content-height)'
-  				},
-  				to: {
-  					height: '0'
-  				}
+        // Sellio custom palette
+        'sellio-primary': {
+          DEFAULT: '#00B894',
+        },
+        'sellio-accent': {
+          DEFAULT: '#3B5998',
+        },
+        'sellio-secondary': {
+          DEFAULT: '#FDCB6E',
+        },
+        'sellio-neutral-light': {
+          DEFAULT: '#F9FAFB',
+        },
+        'sellio-neutral-dark': {
+          DEFAULT: '#2D3436',
+        },
+        'sellio-success': {
+          DEFAULT: '#27AE60',
+        },
+        'sellio-danger': {
+          DEFAULT: '#E17055',
+        },
+  		}
+  	},
+  	borderRadius: {
+  		lg: 'var(--radius)',
+  		md: 'calc(var(--radius) - 2px)',
+  		sm: 'calc(var(--radius) - 4px)'
+  	},
+  	keyframes: {
+  		'accordion-down': {
+  			from: {
+  				height: '0'
+  			},
+  			to: {
+  				height: 'var(--radix-accordion-content-height)'
   			}
   		},
-  		animation: {
-  			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  		'accordion-up': {
+  			from: {
+  				height: 'var(--radix-accordion-content-height)'
+  			},
+  			to: {
+  				height: '0'
+  			}
   		}
+  	},
+  	animation: {
+  		'accordion-down': 'accordion-down 0.2s ease-out',
+  		'accordion-up': 'accordion-up 0.2s ease-out'
   	}
   },
   plugins: [require("tailwindcss-animate")],
