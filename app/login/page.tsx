@@ -168,12 +168,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-sellio-light-bg p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <MessageSquare className="h-8 w-8 text-emerald-600" />
-            <span className="text-2xl font-bold text-gray-900">Sellio</span>
+            <MessageSquare className="h-8 w-8 text-sellio-primary" />
+            <span className="text-2xl font-bold text-sellio-dark-text">Sellio</span>
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>Sign in to your account to continue managing your business</CardDescription>
@@ -181,22 +181,22 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                <p className="text-sm text-red-700">{error}</p>
+              <div className="bg-sellio-warning/20 border border-sellio-warning rounded-lg p-3 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-sellio-warning flex-shrink-0" />
+                <p className="text-sm text-sellio-warning">{error}</p>
               </div>
             )}
 
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-sellio-tertiary" />
                 <Input
                   id="email"
                   name="email"
                   type="email"
                   placeholder="Enter your email"
-                  className={`pl-10 ${fieldErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                  className={`pl-10 ${fieldErrors.email ? 'border-sellio-warning focus-visible:ring-sellio-warning' : ''}`}
                   value={email}
                   onChange={handleEmailChange}
                   disabled={isLoading}
@@ -205,7 +205,7 @@ export default function LoginPage() {
                 />
               </div>
               {fieldErrors.email && (
-                <p id="email-error" className="text-sm text-red-600 flex items-center gap-1">
+                <p id="email-error" className="text-sm text-sellio-warning flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   {fieldErrors.email}
                 </p>
@@ -215,13 +215,13 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-sellio-tertiary" />
                 <Input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  className={`pl-10 pr-10 ${fieldErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
+                  className={`pl-10 pr-10 ${fieldErrors.password ? 'border-sellio-warning focus-visible:ring-sellio-warning' : ''}`}
                   value={password}
                   onChange={handlePasswordChange}
                   disabled={isLoading}
@@ -230,7 +230,7 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-3 text-sellio-tertiary hover:text-sellio-primary"
                   onClick={togglePasswordVisibility}
                   disabled={isLoading}
                   aria-label={showPassword ? "Hide password" : "Show password"}
@@ -239,7 +239,7 @@ export default function LoginPage() {
                 </button>
               </div>
               {fieldErrors.password && (
-                <p id="password-error" className="text-sm text-red-600 flex items-center gap-1">
+                <p id="password-error" className="text-sm text-sellio-warning flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   {fieldErrors.password}
                 </p>
@@ -260,7 +260,7 @@ export default function LoginPage() {
               </div>
               <Link 
                 href="/forgot-password" 
-                className="text-sm text-emerald-600 hover:underline focus:underline focus:outline-none"
+                className="text-sm text-sellio-accent hover:underline focus:underline focus:outline-none"
                 tabIndex={isLoading ? -1 : 0}
               >
                 Forgot password?
@@ -269,7 +269,7 @@ export default function LoginPage() {
 
             <Button 
               type="submit" 
-              className="w-full bg-emerald-600 hover:bg-emerald-700" 
+              className="w-full bg-sellio-primary hover:bg-sellio-accent text-white" 
               size="lg" 
               disabled={isLoading}
             >
@@ -289,7 +289,7 @@ export default function LoginPage() {
               <Separator />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+              <span className="bg-sellio-tertiary px-2 text-sellio-dark-text">Or continue with</span>
             </div>
           </div>
 
@@ -333,11 +333,11 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          <div className="text-center text-sm mt-6 text-muted-foreground">
+          <div className="text-center text-sm mt-6 text-sellio-dark-text">
             {"Don't have an account? "}
             <Link 
               href="/signup" 
-              className="text-emerald-600 hover:underline focus:underline focus:outline-none font-medium"
+              className="text-sellio-accent hover:underline focus:underline focus:outline-none font-medium"
               tabIndex={isLoading ? -1 : 0}
             >
               Sign up

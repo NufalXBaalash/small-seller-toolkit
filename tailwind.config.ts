@@ -76,27 +76,30 @@ const config: Config = {
   				'900': '#102a43',
   				'950': '#0a1f2e'
   			},
-        // Sellio custom palette
+        // Sellio unique palette
         'sellio-primary': {
-          DEFAULT: '#00B894',
+          DEFAULT: '#5E60CE',
         },
         'sellio-accent': {
-          DEFAULT: '#3B5998',
+          DEFAULT: '#F72585',
         },
         'sellio-secondary': {
-          DEFAULT: '#FDCB6E',
+          DEFAULT: '#4CC9F0',
         },
-        'sellio-neutral-light': {
-          DEFAULT: '#F9FAFB',
+        'sellio-tertiary': {
+          DEFAULT: '#BDE0FE',
         },
-        'sellio-neutral-dark': {
-          DEFAULT: '#2D3436',
+        'sellio-dark-text': {
+          DEFAULT: '#1D1D1D',
+        },
+        'sellio-light-bg': {
+          DEFAULT: '#F8F9FA',
         },
         'sellio-success': {
-          DEFAULT: '#27AE60',
+          DEFAULT: '#06D6A0',
         },
-        'sellio-danger': {
-          DEFAULT: '#E17055',
+        'sellio-warning': {
+          DEFAULT: '#FFD166',
         },
   		}
   	},
