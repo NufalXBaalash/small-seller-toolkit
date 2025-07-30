@@ -175,8 +175,8 @@ export default function LoginPage() {
             <MessageSquare className="h-8 w-8 text-sellio-primary" />
             <span className="text-2xl font-bold text-sellio-text-main">Sellio</span>
           </div>
-          <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>Sign in to your account to continue managing your business</CardDescription>
+          <CardTitle className="text-2xl text-sellio-text-main">Welcome Back</CardTitle>
+          <CardDescription className="text-sellio-primary">Sign in to your account to continue managing your business</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
@@ -190,7 +190,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-sellio-accent" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-sellio-primary" />
                 <Input
                   id="email"
                   name="email"
@@ -215,7 +215,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-sellio-accent" />
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-sellio-primary" />
                 <Input
                   id="password"
                   name="password"
@@ -289,7 +289,7 @@ export default function LoginPage() {
               <Separator />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-sellio-tertiary px-2 text-sellio-text-main">Or continue with</span>
+              <span className="bg-sellio-tertiary px-2 text-sellio-primary">Or continue with</span>
             </div>
           </div>
 
@@ -333,7 +333,7 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          <div className="text-center text-sm mt-6 text-sellio-text-muted">
+          <div className="text-center text-sm mt-6 text-sellio-primary">
             {"Don't have an account? "}
             <Link 
               href="/signup" 

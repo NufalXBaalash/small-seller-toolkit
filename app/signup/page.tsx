@@ -208,8 +208,8 @@ export default function SignupPage() {
             <div className="flex items-center justify-center space-x-2 mb-4">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <CardTitle className="text-green-800">Account Created Successfully!</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-green-800 text-sellio-text-main">Account Created Successfully!</CardTitle>
+            <CardDescription className="text-sellio-primary">
               We've sent a verification email to <strong>{formData.email}</strong>. Please check your inbox and click
               the verification link to activate your account.
             </CardDescription>
@@ -370,7 +370,7 @@ export default function SignupPage() {
                   autoComplete="new-password"
                 />
               </div>
-              <p className="text-xs text-sellio-text-muted">Must be at least 6 characters with letters</p>
+              <p className="text-xs text-sellio-primary">Must be at least 6 characters with letters</p>
             </div>
 
             <div className="space-y-2">
@@ -478,7 +478,7 @@ export default function SignupPage() {
             </Button>
           </div>
 
-          <div className="text-center text-sm mt-6 text-sellio-text-muted">
+          <div className="text-center text-sm mt-6 text-sellio-primary">
             Already have an account?{" "}
             <Link href="/login" className="text-emerald-600 hover:underline">
               Sign in

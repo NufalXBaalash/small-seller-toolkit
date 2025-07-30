@@ -12,8 +12,8 @@ export default function DemoPage() {
             <MessageSquare className="h-8 w-8 text-sellio-primary" />
             <span className="text-2xl font-bold text-sellio-text-main">Sellio</span>
           </div>
-          <CardTitle>Demo Access</CardTitle>
-          <CardDescription>Quick access to explore the Small Seller Toolkit dashboard and features</CardDescription>
+          <CardTitle className="text-sellio-text-main">Demo Access</CardTitle>
+          <CardDescription className="text-sellio-primary">Quick access to explore the Small Seller Toolkit dashboard and features</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
@@ -55,7 +55,7 @@ export default function DemoPage() {
             </Link>
           </div>
 
-          <div className="text-center text-sm text-sellio-text-muted">
+          <div className="text-center text-sm text-sellio-primary">
             This is a demo version. In production, proper authentication would be required.
           </div>
 
