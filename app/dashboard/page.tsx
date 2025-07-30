@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -43,92 +43,157 @@ export default function Dashboard() {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { user, userProfile } = useAuth()
 
-  useEffect(() => {
-    if (user) {
-      fetchDashboardData()
-    }
-  }, [user])
+  const getTimeAgo = useCallback((dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      const now = new Date()
+      
+      // Validate date
+      if (isNaN(date.getTime())) {
+        return "Unknown"
+      }
+      
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
 
-  const fetchDashboardData = async () => {
-    if (!user) return
+      if (diffInMinutes < 0) {
+        return "Just now"
+      } else if (diffInMinutes < 60) {
+        return `${diffInMinutes}m ago`
+      } else if (diffInMinutes < 1440) {
+        return `${Math.floor(diffInMinutes / 60)}h ago`
+      } else {
+        return `${Math.floor(diffInMinutes / 1440)}d ago`
+      }
+    } catch (err) {
+      console.error("Error calculating time ago:", err)
+      return "Unknown"
+    }
+  }, [])
+
+  const fetchDashboardData = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
 
     try {
       setLoading(true)
+      setError(null)
 
-      // Fetch orders for revenue calculation
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("total_amount, status, created_at, customers(name)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+      // Use Promise.allSettled to handle partial failures gracefully
+      const [ordersResult, chatsResult, customersResult, productsResult] = await Promise.allSettled([
+        supabase
+          .from("orders")
+          .select("total_amount, status, created_at, customers(name)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(10), // Limit to prevent excessive data loading
 
-      // Fetch chats
-      const { data: chats } = await supabase
-        .from("chats")
-        .select("unread_count, status, customers(name), last_message, created_at")
-        .eq("user_id", user.id)
-        .eq("status", "active")
+        supabase
+          .from("chats")
+          .select("unread_count, status, customers(name), last_message, created_at")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .limit(10),
 
-      // Fetch customers
-      const { data: customers } = await supabase
-        .from("customers")
-        .select("id, name, status, created_at")
-        .eq("user_id", user.id)
+        supabase
+          .from("customers")
+          .select("id, name, status, created_at")
+          .eq("user_id", user.id),
 
-      // Fetch products for low stock alerts
-      const { data: products } = await supabase
-        .from("products")
-        .select("name, stock")
-        .eq("user_id", user.id)
-        .lte("stock", 5)
+        supabase
+          .from("products")
+          .select("name, stock")
+          .eq("user_id", user.id)
+          .lte("stock", 5)
+          .limit(5)
+      ])
 
-      // Calculate stats
-      const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0
-      const totalOrders = orders?.length || 0
-      const activeChats = chats?.filter((chat) => chat.unread_count > 0).length || 0
-      const totalCustomers = customers?.length || 0
+      // Extract data with fallbacks
+      const orders = ordersResult.status === 'fulfilled' ? ordersResult.value.data || [] : []
+      const chats = chatsResult.status === 'fulfilled' ? chatsResult.value.data || [] : []
+      const customers = customersResult.status === 'fulfilled' ? customersResult.value.data || [] : []
+      const products = productsResult.status === 'fulfilled' ? productsResult.value.data || [] : []
 
-      // Create recent activity
-      const recentActivity = []
+      // Log any errors but don't fail completely
+      if (ordersResult.status === 'rejected') console.error("Orders fetch error:", ordersResult.reason)
+      if (chatsResult.status === 'rejected') console.error("Chats fetch error:", chatsResult.reason)
+      if (customersResult.status === 'rejected') console.error("Customers fetch error:", customersResult.reason)
+      if (productsResult.status === 'rejected') console.error("Products fetch error:", productsResult.reason)
+
+      // Calculate stats with null checks
+      const totalRevenue = orders.reduce((sum, order) => {
+        const amount = order?.total_amount ? Number(order.total_amount) : 0
+        return sum + (isNaN(amount) ? 0 : amount)
+      }, 0)
+
+      const totalOrders = orders.length
+      const activeChats = chats.filter((chat) => chat?.unread_count && chat.unread_count > 0).length
+      const totalCustomers = customers.length
+
+      // Create recent activity with better error handling
+      const recentActivity: Array<{
+        id: string;
+        type: "order" | "message" | "alert";
+        title: string;
+        description: string;
+        time: string;
+        status: string;
+      }> = []
 
       // Add recent orders
-      orders?.slice(0, 2).forEach((order) => {
-        recentActivity.push({
-          id: `order-${Math.random()}`,
-          type: "order" as const,
-          title: `New order from ${order.customers?.name || "Customer"}`,
-          description: `$${Number(order.total_amount).toFixed(2)} - ${order.status}`,
-          time: getTimeAgo(order.created_at),
-          status: order.status,
-        })
+      orders.slice(0, 2).forEach((order, index) => {
+        if (order) {
+          const customerName = Array.isArray(order.customers) 
+            ? order.customers[0]?.name || "Unknown Customer"
+            : (order.customers as { name?: string })?.name || "Unknown Customer"
+          const amount = order.total_amount ? Number(order.total_amount) : 0
+          const status = order.status || "unknown"
+          
+          recentActivity.push({
+            id: `order-${order.created_at || Date.now()}-${index}`,
+            type: "order" as const,
+            title: `New order from ${customerName}`,
+            description: `$${amount.toFixed(2)} - ${status}`,
+            time: getTimeAgo(order.created_at || new Date().toISOString()),
+            status: status,
+          })
+        }
       })
 
       // Add recent messages
-      chats?.slice(0, 2).forEach((chat) => {
-        if (chat.unread_count > 0) {
+      chats.slice(0, 2).forEach((chat, index) => {
+        if (chat && chat.unread_count && chat.unread_count > 0) {
+          const customerName = Array.isArray(chat.customers) 
+            ? chat.customers[0]?.name || "Unknown Customer"
+            : (chat.customers as { name: string })?.name || "Unknown Customer"
+          
           recentActivity.push({
-            id: `message-${Math.random()}`,
+            id: `message-${chat.created_at || Date.now()}-${index}`,
             type: "message" as const,
-            title: `New message from ${chat.customers?.name || "Customer"}`,
+            title: `New message from ${customerName}`,
             description: chat.last_message || "New message received",
-            time: getTimeAgo(chat.created_at),
+            time: getTimeAgo(chat.created_at || new Date().toISOString()),
             status: "unread",
           })
         }
       })
 
       // Add low stock alerts
-      products?.slice(0, 1).forEach((product) => {
-        recentActivity.push({
-          id: `alert-${Math.random()}`,
-          type: "alert" as const,
-          title: "Low stock alert",
-          description: `${product.name} - ${product.stock} left`,
-          time: "1h ago",
-          status: "warning",
-        })
+      products.slice(0, 1).forEach((product, index) => {
+        if (product && product.name) {
+          recentActivity.push({
+            id: `alert-${Date.now()}-${index}`,
+            type: "alert" as const,
+            title: "Low stock alert",
+            description: `${product.name} - ${product.stock || 0} left`,
+            time: "1h ago",
+            status: "warning",
+          })
+        }
       })
 
       setStats({
@@ -138,26 +203,29 @@ export default function Dashboard() {
         totalCustomers,
         recentActivity: recentActivity.slice(0, 3),
       })
+
     } catch (error) {
       console.error("Error fetching dashboard data:", error)
+      setError("Failed to load dashboard data. Please try refreshing the page.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id, getTimeAgo])
 
-  const getTimeAgo = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+  useEffect(() => {
+    let mounted = true
 
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes}m ago`
-    } else if (diffInMinutes < 1440) {
-      return `${Math.floor(diffInMinutes / 60)}h ago`
-    } else {
-      return `${Math.floor(diffInMinutes / 1440)}d ago`
+    if (user?.id && mounted) {
+      fetchDashboardData()
+    } else if (!user && mounted) {
+      setLoading(false)
     }
-  }
+
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      mounted = false
+    }
+  }, [user?.id, fetchDashboardData])
 
   const getActivityIcon = (type: string, status: string) => {
     switch (type) {
@@ -183,6 +251,24 @@ export default function Dashboard() {
       default:
         return "bg-gray-50"
     }
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex-1 space-y-6 sm:space-y-8 p-4 sm:p-6 md:p-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchDashboardData} className="bg-blue-600 hover:bg-blue-700">
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -236,7 +322,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl sm:text-3xl font-bold text-gray-900">
-              ${stats?.totalRevenue.toFixed(2) || "0.00"}
+              ${(stats?.totalRevenue || 0).toFixed(2)}
             </div>
             <div className="flex items-center text-xs sm:text-sm text-green-600 mt-1 sm:mt-2">
               <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
@@ -316,7 +402,7 @@ export default function Dashboard() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4 sm:space-y-6">
-            {stats?.recentActivity.length ? (
+            {stats?.recentActivity && stats.recentActivity.length > 0 ? (
               stats.recentActivity.map((activity) => (
                 <div
                   key={activity.id}
@@ -429,7 +515,9 @@ export default function Dashboard() {
       </Card>
 
       {/* WhatsApp Connection Modal */}
-      <WhatsAppConnectModal open={isWhatsAppModalOpen} onOpenChange={setIsWhatsAppModalOpen} />
+      {isWhatsAppModalOpen && (
+        <WhatsAppConnectModal open={isWhatsAppModalOpen} onOpenChange={setIsWhatsAppModalOpen} />
+      )}
     </div>
   )
 }
