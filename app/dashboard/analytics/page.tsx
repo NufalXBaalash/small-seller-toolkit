@@ -3,6 +3,9 @@
 import React, { useState, useMemo } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Download, FileText } from 'lucide-react';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 const AnalyticsDashboard = () => {
   const [isExporting, setIsExporting] = useState(false);
   
