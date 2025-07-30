@@ -5,12 +5,12 @@ import Link from "next/link"
 
 export default function DemoPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-sellio-light-bg p-4">
+    <div className="min-h-screen flex items-center justify-center bg-sellio-secondary p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <MessageSquare className="h-8 w-8 text-sellio-primary" />
-            <span className="text-2xl font-bold text-sellio-dark-text">Sellio</span>
+            <span className="text-2xl font-bold text-sellio-text-main">Sellio</span>
           </div>
           <CardTitle>Demo Access</CardTitle>
           <CardDescription>Quick access to explore the Small Seller Toolkit dashboard and features</CardDescription>
@@ -25,37 +25,37 @@ export default function DemoPage() {
             </Link>
 
             <Link href="/dashboard/chats" className="block">
-              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-dark-text">
+              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-text-main">
                 View Chat Management
               </Button>
             </Link>
 
             <Link href="/dashboard/inventory" className="block">
-              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-dark-text">
+              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-text-main">
                 View Inventory
               </Button>
             </Link>
 
             <Link href="/dashboard/analytics" className="block">
-              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-dark-text">
+              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-text-main">
                 View Analytics
               </Button>
             </Link>
 
             <Link href="/dashboard/customers" className="block">
-              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-dark-text">
+              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-text-main">
                 View Customers
               </Button>
             </Link>
 
             <Link href="/dashboard/settings" className="block">
-              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-dark-text">
+              <Button variant="outline" className="w-full bg-sellio-tertiary text-sellio-text-main">
                 View Settings
               </Button>
             </Link>
           </div>
 
-          <div className="text-center text-sm text-sellio-dark-text">
+          <div className="text-center text-sm text-sellio-text-muted">
             This is a demo version. In production, proper authentication would be required.
           </div>
 

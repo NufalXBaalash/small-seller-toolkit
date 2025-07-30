@@ -168,12 +168,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-sellio-light-bg p-4">
+    <div className="min-h-screen flex items-center justify-center bg-sellio-secondary p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <MessageSquare className="h-8 w-8 text-sellio-primary" />
-            <span className="text-2xl font-bold text-sellio-dark-text">Sellio</span>
+            <span className="text-2xl font-bold text-sellio-text-main">Sellio</span>
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>Sign in to your account to continue managing your business</CardDescription>
@@ -182,15 +182,15 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {error && (
               <div className="bg-sellio-warning/20 border border-sellio-warning rounded-lg p-3 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-sellio-warning flex-shrink-0" />
-                <p className="text-sm text-sellio-warning">{error}</p>
+                <AlertCircle className="h-4 w-4 text-sellio-danger flex-shrink-0" />
+                <p className="text-sm text-sellio-danger">{error}</p>
               </div>
             )}
 
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-sellio-tertiary" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-sellio-accent" />
                 <Input
                   id="email"
                   name="email"
@@ -215,7 +215,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-sellio-tertiary" />
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-sellio-accent" />
                 <Input
                   id="password"
                   name="password"
@@ -230,7 +230,7 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-3 text-sellio-tertiary hover:text-sellio-primary"
+                  className="absolute right-3 top-3 text-sellio-accent hover:text-sellio-primary"
                   onClick={togglePasswordVisibility}
                   disabled={isLoading}
                   aria-label={showPassword ? "Hide password" : "Show password"}
@@ -289,7 +289,7 @@ export default function LoginPage() {
               <Separator />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-sellio-tertiary px-2 text-sellio-dark-text">Or continue with</span>
+              <span className="bg-sellio-tertiary px-2 text-sellio-text-main">Or continue with</span>
             </div>
           </div>
 
@@ -333,7 +333,7 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          <div className="text-center text-sm mt-6 text-sellio-dark-text">
+          <div className="text-center text-sm mt-6 text-sellio-text-muted">
             {"Don't have an account? "}
             <Link 
               href="/signup" 
