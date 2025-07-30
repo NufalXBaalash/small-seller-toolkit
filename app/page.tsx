@@ -635,8 +635,8 @@ export default function LandingPage() {
                 <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
                   <MessageSquare className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                 </div>
-                <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                  SellerKit
+                <span className="text-lg sm:text-2xl font-bold text-emerald-400">
+                  Sellio
                 </span>
               </div>
               <p className="text-gray-400 mb-6 max-w-md text-sm sm:text-base">
