@@ -1,535 +1,523 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { WhatsAppConnectModal } from "@/components/whatsapp-connect-modal"
+import { useAuth } from "@/contexts/auth-context"
+import { supabase } from "@/lib/supabase"
 import {
   MessageSquare,
-  Zap,
-  BarChart3,
+  Package,
   Users,
-  Star,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Instagram,
-  Facebook,
-  Twitter,
-  Mail,
-  Phone,
-  MapPin,
-  ArrowRight,
-  Sparkles,
   TrendingUp,
-  Shield,
-  Clock,
-  Globe
+  DollarSign,
+  ShoppingCart,
+  AlertCircle,
+  CheckCircle,
+  ArrowUpRight,
+  Plus,
+  Eye,
+  Download,
+  Zap,
+  Loader2,
 } from "lucide-react"
 
-interface FAQItem {
-  question: string
-  answer: string
+interface DashboardStats {
+  totalRevenue: number
+  totalOrders: number
+  activeChats: number
+  totalCustomers: number
+  recentActivity: Array<{
+    id: string
+    type: "order" | "message" | "alert"
+    title: string
+    description: string
+    time: string
+    status: string
+  }>
 }
 
-const faqs: FAQItem[] = [
-  {
-    question: "How does Sellio integrate with my existing social media accounts?",
-    answer: "Sellio connects seamlessly with your WhatsApp Business, Instagram, Facebook, and other platforms through secure API integrations. Setup takes just a few minutes."
-  },
-  {
-    question: "Is my customer data secure?",
-    answer: "Yes, we use enterprise-grade encryption and comply with GDPR and other data protection regulations. Your data is stored securely and never shared with third parties."
-  },
-  {
-    question: "Can I try Sellio before purchasing?",
-    answer: "Absolutely! We offer a 14-day free trial with full access to all features. No credit card required to get started."
-  },
-  {
-    question: "What kind of support do you provide?",
-    answer: "We provide 24/7 customer support via chat and email for all plans. Pro and Enterprise users also get priority phone support and dedicated account managers."
-  },
-  {
-    question: "How does the AI automation work?",
-    answer: "Our AI learns from your customer interactions and automatically handles common inquiries, suggests responses, and optimizes your product listings based on performance data."
+export default function Dashboard() {
+  const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { user, userProfile } = useAuth()
+
+  const getTimeAgo = useCallback((dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      const now = new Date()
+      
+      // Validate date
+      if (isNaN(date.getTime())) {
+        return "Unknown"
+      }
+      
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+
+      if (diffInMinutes < 0) {
+        return "Just now"
+      } else if (diffInMinutes < 60) {
+        return `${diffInMinutes}m ago`
+      } else if (diffInMinutes < 1440) {
+        return `${Math.floor(diffInMinutes / 60)}h ago`
+      } else {
+        return `${Math.floor(diffInMinutes / 1440)}d ago`
+      }
+    } catch (err) {
+      console.error("Error calculating time ago:", err)
+      return "Unknown"
+    }
+  }, [])
+
+  const fetchDashboardData = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false)
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Use Promise.allSettled to handle partial failures gracefully
+      const [ordersResult, chatsResult, customersResult, productsResult] = await Promise.allSettled([
+        supabase
+          .from("orders")
+          .select("total_amount, status, created_at, customers(name)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(10), // Limit to prevent excessive data loading
+
+        supabase
+          .from("chats")
+          .select("unread_count, status, customers(name), last_message, created_at")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .limit(10),
+
+        supabase
+          .from("customers")
+          .select("id, name, status, created_at")
+          .eq("user_id", user.id),
+
+        supabase
+          .from("products")
+          .select("name, stock")
+          .eq("user_id", user.id)
+          .lte("stock", 5)
+          .limit(5)
+      ])
+
+      // Extract data with fallbacks
+      const orders = ordersResult.status === 'fulfilled' ? ordersResult.value.data || [] : []
+      const chats = chatsResult.status === 'fulfilled' ? chatsResult.value.data || [] : []
+      const customers = customersResult.status === 'fulfilled' ? customersResult.value.data || [] : []
+      const products = productsResult.status === 'fulfilled' ? productsResult.value.data || [] : []
+
+      // Log any errors but don't fail completely
+      if (ordersResult.status === 'rejected') console.error("Orders fetch error:", ordersResult.reason)
+      if (chatsResult.status === 'rejected') console.error("Chats fetch error:", chatsResult.reason)
+      if (customersResult.status === 'rejected') console.error("Customers fetch error:", customersResult.reason)
+      if (productsResult.status === 'rejected') console.error("Products fetch error:", productsResult.reason)
+
+      // Calculate stats with null checks
+      const totalRevenue = orders.reduce((sum, order) => {
+        const amount = order?.total_amount ? Number(order.total_amount) : 0
+        return sum + (isNaN(amount) ? 0 : amount)
+      }, 0)
+
+      const totalOrders = orders.length
+      const activeChats = chats.filter((chat) => chat?.unread_count && chat.unread_count > 0).length
+      const totalCustomers = customers.length
+
+      // Create recent activity with better error handling
+      const recentActivity: Array<{
+        id: string;
+        type: "order" | "message" | "alert";
+        title: string;
+        description: string;
+        time: string;
+        status: string;
+      }> = []
+
+      // Add recent orders
+      orders.slice(0, 2).forEach((order, index) => {
+        if (order) {
+          const customerName = Array.isArray(order.customers) 
+            ? order.customers[0]?.name || "Unknown Customer"
+            : (order.customers as { name?: string })?.name || "Unknown Customer"
+          const amount = order.total_amount ? Number(order.total_amount) : 0
+          const status = order.status || "unknown"
+          
+          recentActivity.push({
+            id: `order-${order.created_at || Date.now()}-${index}`,
+            type: "order" as const,
+            title: `New order from ${customerName}`,
+            description: `$${amount.toFixed(2)} - ${status}`,
+            time: getTimeAgo(order.created_at || new Date().toISOString()),
+            status: status,
+          })
+        }
+      })
+
+      // Add recent messages
+      chats.slice(0, 2).forEach((chat, index) => {
+        if (chat && chat.unread_count && chat.unread_count > 0) {
+          const customerName = Array.isArray(chat.customers) 
+            ? chat.customers[0]?.name || "Unknown Customer"
+            : (chat.customers as { name: string })?.name || "Unknown Customer"
+          
+          recentActivity.push({
+            id: `message-${chat.created_at || Date.now()}-${index}`,
+            type: "message" as const,
+            title: `New message from ${customerName}`,
+            description: chat.last_message || "New message received",
+            time: getTimeAgo(chat.created_at || new Date().toISOString()),
+            status: "unread",
+          })
+        }
+      })
+
+      // Add low stock alerts
+      products.slice(0, 1).forEach((product, index) => {
+        if (product && product.name) {
+          recentActivity.push({
+            id: `alert-${Date.now()}-${index}`,
+            type: "alert" as const,
+            title: "Low stock alert",
+            description: `${product.name} - ${product.stock || 0} left`,
+            time: "1h ago",
+            status: "warning",
+          })
+        }
+      })
+
+      setStats({
+        totalRevenue,
+        totalOrders,
+        activeChats,
+        totalCustomers,
+        recentActivity: recentActivity.slice(0, 3),
+      })
+
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error)
+      setError("Failed to load dashboard data. Please try refreshing the page.")
+    } finally {
+      setLoading(false)
+    }
+  }, [user?.id, getTimeAgo])
+
+  useEffect(() => {
+    let mounted = true
+
+    if (user?.id && mounted) {
+      fetchDashboardData()
+    } else if (!user && mounted) {
+      setLoading(false)
+    }
+
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      mounted = false
+    }
+  }, [user?.id, fetchDashboardData])
+
+  const getActivityIcon = (type: string, status: string) => {
+    switch (type) {
+      case "order":
+        return <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+      case "message":
+        return <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+      case "alert":
+        return <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
+      default:
+        return <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-gray-600" />
+    }
   }
-]
 
-const testimonials = [
-  {
-    name: "Sarah Chen",
-    role: "E-commerce Store Owner",
-    content: "Sellio transformed my business! I'm now managing 5 platforms effortlessly and my sales increased by 40% in just 2 months.",
-    rating: 5,
-    avatar: "/placeholder-user.jpg"
-  },
-  {
-    name: "Marcus Rodriguez",
-    role: "Digital Marketing Agency",
-    content: "The AI automation is incredible. It handles 80% of customer inquiries automatically, freeing up our team for strategic work.",
-    rating: 5,
-    avatar: "/placeholder-user.jpg"
-  },
-  {
-    name: "Emily Watson",
-    role: "Fashion Boutique Owner",
-    content: "The analytics dashboard gives me insights I never had before. I can see exactly which products perform best on each platform.",
-    rating: 5,
-    avatar: "/placeholder-user.jpg"
+  const getActivityBgColor = (type: string) => {
+    switch (type) {
+      case "order":
+        return "bg-green-50"
+      case "message":
+        return "bg-blue-50"
+      case "alert":
+        return "bg-orange-50"
+      default:
+        return "bg-gray-50"
+    }
   }
-]
 
-export default function SellioLanding() {
-  const [openFAQ, setOpenFAQ] = useState<number | null>(null)
+  // Handle error state
+  if (error) {
+    return (
+      <div className="flex-1 space-y-6 sm:space-y-8 p-4 sm:p-6 md:p-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-4" />
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchDashboardData} className="bg-blue-600 hover:bg-blue-700">
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-  const toggleFAQ = (index: number) => {
-    setOpenFAQ(openFAQ === index ? null : index)
+  if (loading) {
+    return (
+      <div className="flex-1 space-y-6 sm:space-y-8 p-4 sm:p-6 md:p-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading your dashboard...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
-          <div className="text-center">
-            <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
-              <Sparkles className="h-4 w-4 text-yellow-400 mr-2" />
-              <span className="text-white text-sm font-medium">AI-Powered Social Commerce Platform</span>
+    <div className="flex-1 space-y-6 sm:space-y-8 p-4 sm:p-6 md:p-8">
+      {/* Header */}
+      <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900">
+            Good morning, {userProfile?.first_name || "there"}! 👋
+          </h1>
+          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">
+            Here's what's happening with your business today
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+          <Button variant="outline" className="font-medium bg-transparent text-sm sm:text-base">
+            <Download className="mr-2 h-4 w-4" />
+            Export Data
+          </Button>
+          <Button
+            onClick={() => setIsWhatsAppModalOpen(true)}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-medium text-sm sm:text-base"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Connect WhatsApp
+          </Button>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-blue-50 hover:shadow-xl transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+              <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
-            
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-              Sell Smarter with{" "}
-              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                Sellio
-              </span>
-            </h1>
-            
-            <p className="text-xl sm:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-              Connect all your social platforms, automate customer interactions, and boost sales with AI-powered insights. 
-              The all-in-one solution for modern online sellers.
-            </p>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button size="lg" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all">
-                Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+              ${(stats?.totalRevenue || 0).toFixed(2)}
+            </div>
+            <div className="flex items-center text-xs sm:text-sm text-green-600 mt-1 sm:mt-2">
+              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+              <span className="font-medium">+12.5%</span>
+              <span className="text-gray-500 ml-1">from last month</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-purple-50 hover:shadow-xl transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Orders</CardTitle>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stats?.totalOrders || 0}</div>
+            <div className="flex items-center text-xs sm:text-sm text-green-600 mt-1 sm:mt-2">
+              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+              <span className="font-medium">+{stats?.totalOrders || 0}</span>
+              <span className="text-gray-500 ml-1">total orders</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-orange-50 hover:shadow-xl transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Active Chats</CardTitle>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stats?.activeChats || 0}</div>
+            <div className="flex items-center text-xs sm:text-sm text-orange-600 mt-1 sm:mt-2">
+              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+              <span className="font-medium">{stats?.activeChats || 0} pending</span>
+              <span className="text-gray-500 ml-1">responses</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-lg bg-gradient-to-br from-white to-pink-50 hover:shadow-xl transition-all">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
+            <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">Customers</CardTitle>
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-pink-500 to-pink-600 rounded-xl flex items-center justify-center">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stats?.totalCustomers || 0}</div>
+            <div className="flex items-center text-xs sm:text-sm text-green-600 mt-1 sm:mt-2">
+              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+              <span className="font-medium">+{stats?.totalCustomers || 0} total</span>
+              <span className="text-gray-500 ml-1">customers</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-7">
+        {/* Recent Activity */}
+        <Card className="lg:col-span-4 border-0 shadow-lg">
+          <CardHeader className="pb-4 sm:pb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
+              <div>
+                <CardTitle className="text-lg sm:text-xl font-bold">Recent Activity</CardTitle>
+                <CardDescription className="text-sm sm:text-base">
+                  Latest orders and customer interactions
+                </CardDescription>
+              </div>
+              <Button variant="outline" size="sm" className="self-start sm:self-auto bg-transparent">
+                <Eye className="mr-2 h-4 w-4" />
+                View All
               </Button>
-              <Button variant="outline" size="lg" className="border-white/30 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-xl">
-                Watch Demo
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 sm:space-y-6">
+            {stats?.recentActivity && stats.recentActivity.length > 0 ? (
+              stats.recentActivity.map((activity) => (
+                <div
+                  key={activity.id}
+                  className={`flex items-start sm:items-center space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-xl ${getActivityBgColor(activity.type)}`}
+                >
+                  <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-white flex-shrink-0">
+                    {getActivityIcon(activity.type, activity.status)}
+                  </div>
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <p className="font-medium text-gray-900 text-sm sm:text-base">{activity.title}</p>
+                    <p className="text-gray-600 text-xs sm:text-sm">{activity.description}</p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <Badge variant="secondary" className="text-xs">
+                      {activity.time}
+                    </Badge>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No recent activity</p>
+                <p className="text-sm text-gray-400 mt-1">Start by adding products or connecting WhatsApp</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card className="lg:col-span-3 border-0 shadow-lg">
+          <CardHeader className="pb-4 sm:pb-6">
+            <CardTitle className="text-lg sm:text-xl font-bold">Quick Actions</CardTitle>
+            <CardDescription className="text-sm sm:text-base">Common tasks and shortcuts</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 sm:space-y-4">
+            <Button
+              className="w-full justify-start h-10 sm:h-12 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 text-blue-700 border-blue-200 text-sm sm:text-base"
+              variant="outline"
+            >
+              <Package className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              Add New Product
+            </Button>
+            <Button
+              className="w-full justify-start h-10 sm:h-12 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 text-green-700 border-green-200 text-sm sm:text-base"
+              variant="outline"
+            >
+              <Zap className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              Create Auto-Reply
+            </Button>
+            <Button
+              className="w-full justify-start h-10 sm:h-12 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 text-purple-700 border-purple-200 text-sm sm:text-base"
+              variant="outline"
+            >
+              <Users className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              Export Customer List
+            </Button>
+            <Button
+              className="w-full justify-start h-10 sm:h-12 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 text-orange-700 border-orange-200 text-sm sm:text-base"
+              variant="outline"
+            >
+              <TrendingUp className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              View Sales Report
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Integration Status */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="pb-4 sm:pb-6">
+          <CardTitle className="text-lg sm:text-xl font-bold">Platform Integrations</CardTitle>
+          <CardDescription className="text-sm sm:text-base">
+            Connect your social platforms to start automating
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-2 border-dashed border-gray-200 rounded-xl hover:border-green-300 hover:bg-green-50 transition-all space-y-3 sm:space-y-0">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm sm:text-base">WhatsApp Business</p>
+                  <p className="text-gray-600 text-xs sm:text-sm">Connect your WhatsApp account</p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setIsWhatsAppModalOpen(true)}
+                className="bg-green-600 hover:bg-green-700 w-full sm:w-auto text-sm sm:text-base"
+              >
+                Connect
               </Button>
             </div>
-            
-            <div className="mt-12 flex items-center justify-center space-x-8 text-gray-400">
-              <div className="flex items-center">
-                <Check className="h-5 w-5 text-green-400 mr-2" />
-                <span>14-day free trial</span>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-2 border-dashed border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-all space-y-3 sm:space-y-0">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-sm sm:text-base">Facebook Messenger</p>
+                  <p className="text-gray-600 text-xs sm:text-sm">Connect your Facebook Page</p>
+                </div>
               </div>
-              <div className="flex items-center">
-                <Check className="h-5 w-5 text-green-400 mr-2" />
-                <span>No credit card required</span>
-              </div>
-              <div className="flex items-center">
-                <Check className="h-5 w-5 text-green-400 mr-2" />
-                <span>Cancel anytime</span>
-              </div>
+              <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto text-sm sm:text-base">Connect</Button>
             </div>
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      {/* Features Section */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-              Everything you need to scale your business
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Powerful features designed to help you manage, automate, and grow your social commerce presence
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-blue-50 to-blue-100">
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto h-16 w-16 bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center mb-4">
-                  <Zap className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl font-bold text-gray-900">AI Automation</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-gray-600 mb-6">
-                  Let AI handle customer inquiries, product recommendations, and order processing across all platforms automatically.
-                </p>
-                <ul className="space-y-2 text-left">
-                  <li className="flex items-center text-gray-700">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                    Smart chatbot responses
-                  </li>
-                  <li className="flex items-center text-gray-700">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                    Automated product listings
-                  </li>
-                  <li className="flex items-center text-gray-700">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                    Order tracking updates
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-purple-50 to-purple-100">
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto h-16 w-16 bg-gradient-to-r from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center mb-4">
-                  <Globe className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl font-bold text-gray-900">Multi-Platform Sync</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-gray-600 mb-6">
-                  Seamlessly connect and manage WhatsApp, Instagram, Facebook, and more from one unified dashboard.
-                </p>
-                <ul className="space-y-2 text-left">
-                  <li className="flex items-center text-gray-700">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                    Unified inbox management
-                  </li>
-                  <li className="flex items-center text-gray-700">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                    Cross-platform posting
-                  </li>
-                  <li className="flex items-center text-gray-700">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                    Inventory synchronization
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 bg-gradient-to-br from-green-50 to-green-100">
-              <CardHeader className="text-center pb-4">
-                <div className="mx-auto h-16 w-16 bg-gradient-to-r from-green-600 to-green-700 rounded-2xl flex items-center justify-center mb-4">
-                  <BarChart3 className="h-8 w-8 text-white" />
-                </div>
-                <CardTitle className="text-2xl font-bold text-gray-900">Smart Analytics</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center">
-                <p className="text-gray-600 mb-6">
-                  Get actionable insights with advanced analytics to optimize your sales strategy and boost revenue.
-                </p>
-                <ul className="space-y-2 text-left">
-                  <li className="flex items-center text-gray-700">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                    Real-time sales tracking
-                  </li>
-                  <li className="flex items-center text-gray-700">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                    Customer behavior insights
-                  </li>
-                  <li className="flex items-center text-gray-700">
-                    <Check className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
-                    Performance optimization
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-              Trusted by thousands of sellers worldwide
-            </h2>
-            <p className="text-xl text-gray-600">
-              See what our customers are saying about Sellio
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
-                      <Star key={i} className="h-5 w-5 text-yellow-400 fill-current" />
-                    ))}
-                  </div>
-                  <p className="text-gray-700 mb-6 italic">"{testimonial.content}"</p>
-                  <div className="flex items-center">
-                    <img 
-                      src={testimonial.avatar} 
-                      alt={testimonial.name}
-                      className="h-12 w-12 rounded-full mr-4"
-                    />
-                    <div>
-                      <h4 className="font-semibold text-gray-900">{testimonial.name}</h4>
-                      <p className="text-gray-600 text-sm">{testimonial.role}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-              Simple, transparent pricing
-            </h2>
-            <p className="text-xl text-gray-600">
-              Choose the plan that fits your business needs
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Starter Plan */}
-            <Card className="border-2 border-gray-200 hover:border-blue-300 transition-all duration-300">
-              <CardHeader className="text-center pb-4">
-                <CardTitle className="text-2xl font-bold text-gray-900">Starter</CardTitle>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-900">$29</span>
-                  <span className="text-gray-600">/month</span>
-                </div>
-                <p className="text-gray-600 mt-2">Perfect for small businesses</p>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-8">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Up to 2 platforms</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>1,000 AI responses/month</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Basic analytics</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Email support</span>
-                  </li>
-                </ul>
-                <Button className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-xl">
-                  Start Free Trial
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Pro Plan */}
-            <Card className="border-2 border-blue-500 relative hover:border-blue-600 transition-all duration-300 shadow-xl">
-              <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-blue-500 text-white px-4 py-1 text-sm font-semibold">
-                  Most Popular
-                </Badge>
-              </div>
-              <CardHeader className="text-center pb-4">
-                <CardTitle className="text-2xl font-bold text-gray-900">Pro</CardTitle>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-900">$79</span>
-                  <span className="text-gray-600">/month</span>
-                </div>
-                <p className="text-gray-600 mt-2">For growing businesses</p>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-8">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Up to 5 platforms</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>10,000 AI responses/month</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Advanced analytics</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Priority support</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Custom integrations</span>
-                  </li>
-                </ul>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl">
-                  Start Free Trial
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Enterprise Plan */}
-            <Card className="border-2 border-gray-200 hover:border-purple-300 transition-all duration-300">
-              <CardHeader className="text-center pb-4">
-                <CardTitle className="text-2xl font-bold text-gray-900">Enterprise</CardTitle>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-900">$199</span>
-                  <span className="text-gray-600">/month</span>
-                </div>
-                <p className="text-gray-600 mt-2">For large organizations</p>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-8">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Unlimited platforms</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Unlimited AI responses</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Enterprise analytics</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>24/7 phone support</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-3" />
-                    <span>Dedicated account manager</span>
-                  </li>
-                </ul>
-                <Button className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-xl">
-                  Contact Sales
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="py-24 bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-xl text-gray-600">
-              Everything you need to know about Sellio
-            </p>
-          </div>
-          
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <Card key={index} className="border-0 shadow-lg">
-                <CardContent className="p-0">
-                  <button
-                    className="w-full text-left p-6 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
-                    onClick={() => toggleFAQ(index)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-gray-900 pr-4">
-                        {faq.question}
-                      </h3>
-                      {openFAQ === index ? (
-                        <ChevronUp className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-gray-500 flex-shrink-0" />
-                      )}
-                    </div>
-                  </button>
-                  {openFAQ === index && (
-                    <div className="px-6 pb-6">
-                      <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {/* Company Info */}
-            <div className="col-span-1 md:col-span-2">
-              <h3 className="text-2xl font-bold mb-4">Sellio</h3>
-              <p className="text-gray-400 mb-6 max-w-md">
-                The all-in-one platform for social commerce automation. 
-                Connect, automate, and scale your online business with AI-powered tools.
-              </p>
-              <div className="flex space-x-4">
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white p-2">
-                  <Facebook className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white p-2">
-                  <Twitter className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white p-2">
-                  <Instagram className="h-5 w-5" />
-                </Button>
-              </div>
-            </div>
-            
-            {/* Quick Links */}
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Product</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Features</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Integrations</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">API</a></li>
-              </ul>
-            </div>
-            
-            {/* Support */}
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Support</h4>
-              <ul className="space-y-2">
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Help Center</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Documentation</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Contact Us</a></li>
-                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Status</a></li>
-              </ul>
-            </div>
-          </div>
-          
-          {/* Contact Info */}
-          <div className="border-t border-gray-800 mt-12 pt-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="flex items-center">
-                <Mail className="h-5 w-5 text-blue-400 mr-3" />
-                <span className="text-gray-400">support@sellio.com</span>
-              </div>
-              <div className="flex items-center">
-                <Phone className="h-5 w-5 text-blue-400 mr-3" />
-                <span className="text-gray-400">+1 (555) 123-4567</span>
-              </div>
-              <div className="flex items-center">
-                <MapPin className="h-5 w-5 text-blue-400 mr-3" />
-                <span className="text-gray-400">San Francisco, CA</span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Copyright */}
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-            <p className="text-gray-400">
-              © 2024 Sellio. All rights reserved. | 
-              <a href="#" className="hover:text-white transition-colors ml-1">Privacy Policy</a> | 
-              <a href="#" className="hover:text-white transition-colors ml-1">Terms of Service</a>
-            </p>
-          </div>
-        </div>
-      </footer>
+      {/* WhatsApp Connection Modal */}
+      {isWhatsAppModalOpen && (
+        <WhatsAppConnectModal open={isWhatsAppModalOpen} onOpenChange={setIsWhatsAppModalOpen} />
+      )}
     </div>
   )
 }
