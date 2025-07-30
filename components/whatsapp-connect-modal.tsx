@@ -1,14 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import {
   MessageSquare,
   CheckCircle,
@@ -22,13 +20,6 @@ import {
   Search,
   Clock,
   Settings,
-  Shield,
-  Zap,
-  Users,
-  Globe,
-  Check,
-  X,
-  Info,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { countryCodes } from "@/lib/country-codes"
@@ -51,8 +42,6 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
   const [debugOtp, setDebugOtp] = useState("")
   const [canResend, setCanResend] = useState(true)
   const [resendCooldown, setResendCooldown] = useState(0)
-  const [error, setError] = useState("")
-  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const { user, userProfile } = useAuth()
 
@@ -81,17 +70,15 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
     }, 1000)
   }
 
-  const validatePhoneNumber = (phone: string) => {
-    const cleanPhone = phone.replace(/\D/g, "")
-    return cleanPhone.length >= 7 && cleanPhone.length <= 15
-  }
-
   const handlePhoneSubmit = async () => {
-    setError("")
     const fullPhoneNumber = `${countryCode}${phoneNumber.replace(/\D/g, "")}`
 
-    if (!validatePhoneNumber(phoneNumber)) {
-      setError("Please enter a valid phone number (7-15 digits)")
+    if (!phoneNumber || phoneNumber.replace(/\D/g, "").length < 7) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Please enter a valid phone number",
+        variant: "destructive",
+      })
       return
     }
 
@@ -133,11 +120,9 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
         }`,
       })
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Please try again"
-      setError(errorMessage)
       toast({
         title: "Failed to Send OTP",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
       })
     } finally {
@@ -146,10 +131,12 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
   }
 
   const handleVerificationSubmit = async () => {
-    setError("")
-    
     if (!verificationCode || verificationCode.length !== 6) {
-      setError("Please enter the 6-digit verification code")
+      toast({
+        title: "Invalid Code",
+        description: "Please enter the 6-digit verification code",
+        variant: "destructive",
+      })
       return
     }
 
@@ -180,11 +167,9 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
         description: "Your phone number has been successfully verified",
       })
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Please check your code and try again"
-      setError(errorMessage)
       toast({
         title: "Verification Failed",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Please check your code and try again",
         variant: "destructive",
       })
     } finally {
@@ -250,11 +235,9 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
           "Your WhatsApp Business account is now connected and ready to use. Check your phone for a test message!",
       })
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Please check your WhatsApp Business API configuration"
-      setError(errorMessage)
       toast({
         title: "Connection Failed",
-        description: errorMessage,
+        description: error instanceof Error ? error.message : "Please check your WhatsApp Business API configuration",
         variant: "destructive",
       })
     } finally {
@@ -282,8 +265,6 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
     setSearchCountry("")
     setCanResend(true)
     setResendCooldown(0)
-    setError("")
-    setShowAdvanced(false)
   }
 
   const handleClose = () => {
@@ -298,102 +279,61 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
     await handlePhoneSubmit()
   }
 
-  const getStepIcon = (stepNumber: number) => {
-    switch (stepNumber) {
-      case 1:
-        return <Phone className="h-4 w-4" />
-      case 2:
-        return <QrCode className="h-4 w-4" />
-      case 3:
-        return <Smartphone className="h-4 w-4" />
-      case 4:
-        return <Settings className="h-4 w-4" />
-      case 5:
-        return <CheckCircle className="h-4 w-4" />
-      default:
-        return stepNumber
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-3 text-xl">
-            <div className="h-10 w-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
-              <MessageSquare className="h-6 w-6 text-white" />
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <div className="h-8 w-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <MessageSquare className="h-5 w-5 text-green-600" />
             </div>
-            <div>
-              <div className="font-bold">Connect WhatsApp Business</div>
-              <div className="text-sm font-normal text-gray-600">Automate your customer conversations</div>
-            </div>
+            Connect WhatsApp Business
           </DialogTitle>
+          <DialogDescription>
+            Follow these steps to connect your WhatsApp Business account and start automating your customer
+            conversations.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Progress Indicator */}
-          <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              {[1, 2, 3, 4, 5].map((stepNumber) => (
-                <div key={stepNumber} className="flex flex-col items-center">
-                  <div
-                    className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300 ${
-                      stepNumber < step
-                        ? "bg-emerald-500 text-white shadow-lg"
-                        : stepNumber === step
-                          ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-500"
-                          : "bg-gray-100 text-gray-400"
-                    }`}
-                  >
-                    {stepNumber < step ? <CheckCircle className="h-5 w-5" /> : getStepIcon(stepNumber)}
-                  </div>
-                  <div className="text-xs mt-1 text-center">
-                    {stepNumber === 1 && "Phone"}
-                    {stepNumber === 2 && "Verify"}
-                    {stepNumber === 3 && "Business"}
-                    {stepNumber === 4 && "Connect"}
-                    {stepNumber === 5 && "Done"}
-                  </div>
+          <div className="flex items-center justify-between">
+            {[1, 2, 3, 4, 5].map((stepNumber) => (
+              <div key={stepNumber} className="flex items-center">
+                <div
+                  className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                    stepNumber < step
+                      ? "bg-green-500 text-white"
+                      : stepNumber === step
+                        ? "bg-blue-500 text-white"
+                        : "bg-gray-200 text-gray-600"
+                  }`}
+                >
+                  {stepNumber < step ? <CheckCircle className="h-4 w-4" /> : stepNumber}
                 </div>
-              ))}
-            </div>
-            <div className="absolute top-5 left-5 right-5 h-0.5 bg-gray-200 -z-10">
-              <div 
-                className="h-full bg-emerald-500 transition-all duration-500 ease-out"
-                style={{ width: `${((step - 1) / 4) * 100}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Error Display */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-              <div className="text-sm">
-                <p className="font-medium text-red-900">Error</p>
-                <p className="text-red-700">{error}</p>
+                {stepNumber < 5 && (
+                  <div className={`h-1 w-8 sm:w-12 mx-2 ${stepNumber < step ? "bg-green-500" : "bg-gray-200"}`} />
+                )}
               </div>
-            </div>
-          )}
+            ))}
+          </div>
 
           {/* Step 1: Phone Number */}
           {step === 1 && (
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Phone className="h-5 w-5 text-emerald-600" />
-                  Enter Your WhatsApp Business Number
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Phone className="h-5 w-5 text-blue-600" />
+                  Step 1: Enter Your WhatsApp Business Number
                 </CardTitle>
-                <CardDescription>
-                  We'll send a verification code to this number to connect your WhatsApp Business account
-                </CardDescription>
+                <CardDescription>Enter the phone number associated with your WhatsApp Business account</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium">Country & Phone Number</Label>
-                  <div className="flex gap-3">
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Country & Phone Number</Label>
+                  <div className="flex gap-2">
                     <Select value={countryCode} onValueChange={setCountryCode}>
-                      <SelectTrigger className="w-[200px]">
+                      <SelectTrigger className="w-[180px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -432,44 +372,42 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
                       className="flex-1 text-base"
                     />
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Globe className="h-4 w-4" />
-                    <span>Full number: </span>
-                    <span className="font-mono font-medium">
+                  <p className="text-sm text-gray-600">
+                    Full number:{" "}
+                    <span className="font-mono">
                       {countryCode}
                       {phoneNumber.replace(/\D/g, "")}
                     </span>
-                  </div>
+                  </p>
                 </div>
 
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <Info className="h-5 w-5 text-emerald-600 mt-0.5 flex-shrink-0" />
+                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-emerald-900 mb-1">Before you continue:</p>
-                      <ul className="text-emerald-700 space-y-1">
-                        <li>• Make sure this number is registered with WhatsApp Business</li>
-                        <li>• Ensure you have WhatsApp Business API access</li>
-                        <li>• The number should be able to receive messages</li>
-                      </ul>
+                      <p className="font-medium text-blue-900">Important:</p>
+                      <p className="text-blue-700">
+                        Make sure this number is registered with WhatsApp Business API and you have the access token
+                        configured in your environment variables.
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 <Button
                   onClick={handlePhoneSubmit}
-                  disabled={isLoading || !validatePhoneNumber(phoneNumber)}
-                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 h-12 text-base font-medium"
+                  disabled={isLoading}
+                  className="w-full bg-green-600 hover:bg-green-700"
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Sending Verification Code...
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending OTP...
                     </>
                   ) : (
                     <>
                       Send Verification Code
-                      <ArrowRight className="ml-2 h-5 w-5" />
+                      <ArrowRight className="ml-2 h-4 w-4" />
                     </>
                   )}
                 </Button>
@@ -479,52 +417,43 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
 
           {/* Step 2: Verification */}
           {step === 2 && (
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <QrCode className="h-5 w-5 text-emerald-600" />
-                  Verify Your Phone Number
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <QrCode className="h-5 w-5 text-blue-600" />
+                  Step 2: Enter Verification Code
                 </CardTitle>
                 <CardDescription>
-                  We sent a 6-digit code to your WhatsApp. Enter it below to verify your number.
+                  We sent a 6-digit code to your WhatsApp ({countryCode}
+                  {phoneNumber.replace(/\D/g, "")}). Enter it below to verify your number.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <Label htmlFor="code" className="text-sm font-medium">Verification Code</Label>
-                  <div className="relative">
-                    <Input
-                      id="code"
-                      type="text"
-                      placeholder="123456"
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      className="text-center text-2xl tracking-widest font-mono h-14 border-2 focus:border-emerald-500"
-                      maxLength={6}
-                    />
-                    {verificationCode.length === 6 && (
-                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                        <CheckCircle className="h-5 w-5 text-emerald-600" />
-                      </div>
-                    )}
-                  </div>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="code">Verification Code</Label>
+                  <Input
+                    id="code"
+                    type="text"
+                    placeholder="123456"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="text-center text-2xl tracking-widest font-mono"
+                    maxLength={6}
+                  />
                   {debugOtp && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                      <p className="text-xs text-orange-700">
-                        <span className="font-medium">Development Mode:</span> Your OTP is{" "}
-                        <span className="font-mono font-bold">{debugOtp}</span>
-                      </p>
-                    </div>
+                    <p className="text-xs text-orange-600 bg-orange-50 p-2 rounded">
+                      Development Mode: Your OTP is <span className="font-mono font-bold">{debugOtp}</span>
+                    </p>
                   )}
                 </div>
 
-                <div className="text-center space-y-3">
-                  <p className="text-sm text-gray-600">Didn't receive the code?</p>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-2">Didn't receive the code?</p>
                   <Button
                     variant="link"
                     onClick={resendOtp}
                     disabled={isLoading || !canResend}
-                    className="text-emerald-600 p-0 h-auto"
+                    className="text-blue-600 p-0 h-auto"
                   >
                     {!canResend ? (
                       <span className="flex items-center gap-1">
@@ -537,22 +466,18 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
                   </Button>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setStep(1)} 
-                    className="flex-1 h-12"
-                  >
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
                     Back
                   </Button>
                   <Button
                     onClick={handleVerificationSubmit}
-                    disabled={isLoading || verificationCode.length !== 6}
-                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 h-12"
+                    disabled={isLoading}
+                    className="flex-1 bg-green-600 hover:bg-green-700"
                   >
                     {isLoading ? (
                       <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Verifying...
                       </>
                     ) : (
@@ -566,61 +491,50 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
 
           {/* Step 3: Business Setup */}
           {step === 3 && (
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Smartphone className="h-5 w-5 text-emerald-600" />
-                  Business Information
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Smartphone className="h-5 w-5 text-blue-600" />
+                  Step 3: Business Information
                 </CardTitle>
-                <CardDescription>
-                  Set up your business profile for WhatsApp Business automation
-                </CardDescription>
+                <CardDescription>Set up your business profile for WhatsApp Business</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-3">
-                  <Label htmlFor="business" className="text-sm font-medium">Business Name</Label>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="business">Business Name</Label>
                   <Input
                     id="business"
                     type="text"
                     placeholder={userProfile?.business_name || "Your Business Name"}
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
-                    className="text-base h-12"
+                    className="text-base"
                   />
-                  <p className="text-xs text-gray-500">
-                    This will be used for your WhatsApp Business profile and customer communications
-                  </p>
                 </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-blue-900 mb-1">Important:</p>
+                      <p className="font-medium text-blue-900">Important:</p>
                       <p className="text-blue-700">
                         Make sure this matches the business name on your WhatsApp Business account for proper
-                        verification and customer recognition.
+                        verification.
                       </p>
                     </div>
                   </div>
                 </div>
-
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setStep(2)} 
-                    className="flex-1 h-12"
-                  >
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                     Back
                   </Button>
                   <Button
                     onClick={handleBusinessSetup}
                     disabled={isLoading}
-                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 h-12"
+                    className="flex-1 bg-green-600 hover:bg-green-700"
                   >
                     {isLoading ? (
                       <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Setting up...
                       </>
                     ) : (
@@ -634,20 +548,18 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
 
           {/* Step 4: Webhook Configuration */}
           {step === 4 && (
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Settings className="h-5 w-5 text-emerald-600" />
-                  API Configuration
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-blue-600" />
+                  Step 4: API Configuration
                 </CardTitle>
-                <CardDescription>
-                  Your webhook is configured and ready to receive messages
-                </CardDescription>
+                <CardDescription>Your webhook is configured and ready to receive messages</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4">
                 <div className="space-y-4">
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">Webhook URL</Label>
+                  <div className="space-y-2">
+                    <Label>Webhook URL</Label>
                     <div className="flex gap-2">
                       <Input value={webhookUrl} readOnly className="font-mono text-sm" />
                       <Button variant="outline" size="sm" onClick={() => copyToClipboard(webhookUrl)}>
@@ -656,8 +568,8 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <Label className="text-sm font-medium">Verify Token</Label>
+                  <div className="space-y-2">
+                    <Label>Verify Token</Label>
                     <div className="flex gap-2">
                       <Input value={verifyToken} readOnly className="font-mono text-sm" />
                       <Button variant="outline" size="sm" onClick={() => copyToClipboard(verifyToken)}>
@@ -667,11 +579,11 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
                   </div>
                 </div>
 
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="bg-green-50 p-4 rounded-lg">
                   <div className="flex items-start gap-3">
                     <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-green-900 mb-1">Ready to Connect!</p>
+                      <p className="font-medium text-green-900">Ready to Connect!</p>
                       <p className="text-green-700">
                         Your webhook is configured and ready. Click "Test Connection" to send a test message and
                         complete the setup.
@@ -680,22 +592,18 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
                   </div>
                 </div>
 
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setStep(3)} 
-                    className="flex-1 h-12"
-                  >
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
                     Back
                   </Button>
                   <Button
                     onClick={handleWebhookSetup}
                     disabled={isLoading}
-                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 h-12"
+                    className="flex-1 bg-green-600 hover:bg-green-700"
                   >
                     {isLoading ? (
                       <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Testing Connection...
                       </>
                     ) : (
@@ -709,9 +617,9 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
 
           {/* Step 5: Success */}
           {step === 5 && (
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-50">
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg text-green-800">
+            <Card className="border-green-200 bg-green-50">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-green-800">
                   <CheckCircle className="h-6 w-6 text-green-600" />
                   WhatsApp Connected Successfully!
                 </CardTitle>
@@ -719,56 +627,32 @@ export function WhatsAppConnectModal({ open, onOpenChange }: WhatsAppConnectModa
                   Your WhatsApp Business account is now connected and ready to use
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Phone className="h-4 w-4 text-green-600" />
-                      <h4 className="font-medium text-green-800">Phone Number</h4>
-                    </div>
+                  <div className="bg-white p-4 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-800 mb-2">Phone Number</h4>
                     <p className="text-sm text-green-700 font-mono">
                       {countryCode}
                       {phoneNumber.replace(/\D/g, "")}
                     </p>
                   </div>
-                  <div className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Users className="h-4 w-4 text-green-600" />
-                      <h4 className="font-medium text-green-800">Business Name</h4>
-                    </div>
+                  <div className="bg-white p-4 rounded-lg border border-green-200">
+                    <h4 className="font-medium text-green-800 mb-2">Business Name</h4>
                     <p className="text-sm text-green-700">{businessName}</p>
                   </div>
                 </div>
 
-                <div className="bg-white p-4 rounded-lg border border-green-200 shadow-sm">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Zap className="h-4 w-4 text-green-600" />
-                    <h4 className="font-medium text-green-800">What's Next?</h4>
-                  </div>
-                  <ul className="text-sm text-green-700 space-y-2">
-                    <li className="flex items-center gap-2">
-                      <Check className="h-3 w-3 text-green-600" />
-                      Check your WhatsApp for a test message
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-3 w-3 text-green-600" />
-                      Set up auto-reply messages in Settings
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-3 w-3 text-green-600" />
-                      Configure your product catalog
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Check className="h-3 w-3 text-green-600" />
-                      Start receiving and managing customer messages
-                    </li>
+                <div className="bg-white p-4 rounded-lg border border-green-200">
+                  <h4 className="font-medium text-green-800 mb-2">What's Next?</h4>
+                  <ul className="text-sm text-green-700 space-y-1">
+                    <li>• Check your WhatsApp for a test message</li>
+                    <li>• Set up auto-reply messages in Settings</li>
+                    <li>• Configure your product catalog</li>
+                    <li>• Start receiving and managing customer messages</li>
                   </ul>
                 </div>
 
-                <Button 
-                  onClick={handleClose} 
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 h-12 text-base font-medium"
-                >
+                <Button onClick={handleClose} className="w-full bg-green-600 hover:bg-green-700">
                   Start Using WhatsApp
                 </Button>
               </CardContent>

@@ -130,7 +130,7 @@ export default function ChatsPage() {
             <Filter className="mr-2 h-4 w-4" />
             Filter
           </Button>
-          <Button className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 font-medium text-sm sm:text-base">
+          <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-medium text-sm sm:text-base">
             Create Auto-Reply
           </Button>
         </div>
@@ -161,7 +161,7 @@ export default function ChatsPage() {
                         .map((n) => n[0])
                         .join("")}`}
                     />
-                    <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-semibold text-xs sm:text-sm">
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold text-xs sm:text-sm">
                       {chat.customers.name
                         .split(" ")
                         .map((n) => n[0])
@@ -207,7 +207,7 @@ export default function ChatsPage() {
               <div className="relative flex-shrink-0">
                 <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
                   <AvatarImage src="/placeholder.svg?height=48&width=48&text=MS" />
-                  <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-500 text-white font-semibold">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
                     MS
                   </AvatarFallback>
                 </Avatar>
@@ -247,7 +247,7 @@ export default function ChatsPage() {
 
               {/* Auto Reply */}
               <div className="flex justify-end">
-                <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-2xl rounded-br-md p-3 sm:p-4 max-w-xs shadow-sm">
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl rounded-br-md p-3 sm:p-4 max-w-xs shadow-sm">
                   <p className="text-xs sm:text-sm">
                     Hello! Yes, we have iPhone cases in blue. Which model do you need?
                   </p>
@@ -322,7 +322,7 @@ export default function ChatsPage() {
                 <Button
                   onClick={sendMessage}
                   disabled={isSending}
-                  className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 h-8 sm:h-10 px-3 sm:px-4"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-8 sm:h-10 px-3 sm:px-4"
                 >
                   {isSending ? (
                     <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />

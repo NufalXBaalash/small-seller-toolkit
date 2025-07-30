@@ -1,6 +1,6 @@
 -- Create users table (extends Supabase auth.users)
 CREATE TABLE IF NOT EXISTS public.users (
-  id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email TEXT NOT NULL,
   first_name TEXT,
   last_name TEXT,
@@ -101,32 +101,67 @@ ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.chats ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can manage own profile" ON public.users;
+DROP POLICY IF EXISTS "Allow user profile creation" ON public.users;
+DROP POLICY IF EXISTS "Users can view own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can delete own profile" ON public.users;
+
+DROP POLICY IF EXISTS "Users can manage own business" ON public.businesses;
+DROP POLICY IF EXISTS "Users can manage own products" ON public.products;
+DROP POLICY IF EXISTS "Users can manage own customers" ON public.customers;
+DROP POLICY IF EXISTS "Users can manage own orders" ON public.orders;
+DROP POLICY IF EXISTS "Users can manage own chats" ON public.chats;
+DROP POLICY IF EXISTS "Users can manage messages from own chats" ON public.messages;
+
 -- Create RLS Policies
--- Users can only see their own data
+-- For public.users, the initial insert is handled by a trigger (create_profile_for_new_user)
+-- These policies apply to authenticated users interacting with their own profile.
 CREATE POLICY "Users can view own profile" ON public.users
-  FOR ALL USING (id::text = auth.uid()::text);
+  FOR SELECT USING (auth.uid() = id);
 
-CREATE POLICY "Users can view own business" ON public.businesses
-  FOR ALL USING (user_id::text = auth.uid()::text);
+CREATE POLICY "Users can update own profile" ON public.users
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
 
-CREATE POLICY "Users can view own products" ON public.products
-  FOR ALL USING (user_id::text = auth.uid()::text);
+CREATE POLICY "Users can delete own profile" ON public.users
+  FOR DELETE USING (auth.uid() = id);
 
-CREATE POLICY "Users can view own customers" ON public.customers
-  FOR ALL USING (user_id::text = auth.uid()::text);
+-- Policies for other tables (FOR ALL covers SELECT, INSERT, UPDATE, DELETE)
+CREATE POLICY "Users can manage own business" ON public.businesses
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can view own orders" ON public.orders
-  FOR ALL USING (user_id::text = auth.uid()::text);
+CREATE POLICY "Users can manage own products" ON public.products
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can view own chats" ON public.chats
-  FOR ALL USING (user_id::text = auth.uid()::text);
+CREATE POLICY "Users can manage own customers" ON public.customers
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can view messages from own chats" ON public.messages
+CREATE POLICY "Users can manage own orders" ON public.orders
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage own chats" ON public.chats
+  FOR ALL USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage messages from own chats" ON public.messages
   FOR ALL USING (
     EXISTS (
-      SELECT 1 FROM public.chats 
-      WHERE chats.id = messages.chat_id 
-      AND chats.user_id::text = auth.uid()::text
+      SELECT 1 FROM public.chats
+      WHERE chats.id = messages.chat_id
+      AND chats.user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.chats
+      WHERE chats.id = messages.chat_id
+      AND chats.user_id = auth.uid()
     )
   );
 
@@ -146,6 +181,14 @@ BEGIN
     RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- Drop existing triggers if they exist
+DROP TRIGGER IF EXISTS update_users_updated_at ON public.users;
+DROP TRIGGER IF EXISTS update_businesses_updated_at ON public.businesses;
+DROP TRIGGER IF EXISTS update_products_updated_at ON public.products;
+DROP TRIGGER IF EXISTS update_customers_updated_at ON public.customers;
+DROP TRIGGER IF EXISTS update_orders_updated_at ON public.orders;
+DROP TRIGGER IF EXISTS update_chats_updated_at ON public.chats;
 
 -- Create triggers for updated_at
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON public.users

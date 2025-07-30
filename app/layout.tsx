@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Sellio - Smart Sales Automation",
+  title: "SellerKit - Small Seller Toolkit",
   description: "Automate your social selling business with AI-powered tools",
     generator: 'v0.dev'
 }
