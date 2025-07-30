@@ -5,12 +5,12 @@ import Link from "next/link"
 
 export default function DemoPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-gray-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <MessageSquare className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">SellerKit</span>
+            <MessageSquare className="h-8 w-8 text-navy-600" />
+            <span className="text-2xl font-bold text-gray-900">Sellio</span>
           </div>
           <CardTitle>Demo Access</CardTitle>
           <CardDescription>Quick access to explore the Small Seller Toolkit dashboard and features</CardDescription>
@@ -18,7 +18,7 @@ export default function DemoPage() {
         <CardContent className="space-y-4">
           <div className="space-y-3">
             <Link href="/dashboard" className="block">
-              <Button className="w-full" size="lg">
+              <Button className="w-full bg-gradient-to-r from-navy-600 to-navy-700 hover:from-navy-700 hover:to-navy-800" size="lg">
                 <ArrowRight className="mr-2 h-4 w-4" />
                 Enter Dashboard
               </Button>
@@ -60,7 +60,7 @@ export default function DemoPage() {
           </div>
 
           <div className="text-center">
-            <Link href="/" className="text-blue-600 hover:underline text-sm">
+            <Link href="/" className="text-navy-600 hover:underline text-sm">
               ← Back to Landing Page
             </Link>
           </div>

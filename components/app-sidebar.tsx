@@ -68,12 +68,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
         <div className="flex items-center space-x-2 px-4 py-2">
-          <div className="h-8 w-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+          <div className="h-8 w-8 bg-gradient-to-br from-navy-600 to-navy-700 rounded-lg flex items-center justify-center">
             <MessageSquare className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              SellerKit
+            <span className="text-lg font-bold bg-gradient-to-r from-navy-600 to-navy-700 bg-clip-text text-transparent">
+              Sellio
             </span>
             {userProfile?.business_name && <span className="text-xs text-gray-600">{userProfile.business_name}</span>}
           </div>

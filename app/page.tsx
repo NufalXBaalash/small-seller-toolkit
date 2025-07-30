@@ -28,11 +28,11 @@ export default function LandingPage() {
       <header className="border-b bg-white/95 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-navy-600 to-navy-700 rounded-xl flex items-center justify-center">
               <MessageSquare className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
             </div>
-            <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              SellerKit
+            <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-navy-600 to-navy-700 bg-clip-text text-transparent">
+              Sellio
             </span>
           </div>
           <div className="hidden sm:flex items-center space-x-4">
@@ -42,7 +42,7 @@ export default function LandingPage() {
               </Button>
             </Link>
             <Link href="/signup">
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-medium">
+              <Button className="bg-gradient-to-r from-navy-600 to-navy-700 hover:from-navy-700 hover:to-navy-800 font-medium">
                 Get Started Free
               </Button>
             </Link>
@@ -57,12 +57,12 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative py-12 sm:py-16 md:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-gray-50" />
         <div className="absolute inset-0 bg-grid-pattern opacity-5" />
 
         <div className="container mx-auto text-center max-w-6xl relative">
           <Badge
-            className="mb-4 sm:mb-6 bg-gradient-to-r from-blue-100 to-purple-100 text-blue-700 border-blue-200 px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm"
+            className="mb-4 sm:mb-6 bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border-amber-200 px-3 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm"
             variant="secondary"
           >
             🚀 Trusted by 10,000+ sellers worldwide
@@ -70,13 +70,13 @@ export default function LandingPage() {
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-6 sm:mb-8 leading-tight">
             Turn Your
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-navy-600 to-navy-700 bg-clip-text text-transparent">
               {" "}
               WhatsApp{" "}
             </span>
             Into a
             <br className="hidden sm:block" />
-            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">
               {" "}
               Sales Machine
             </span>
@@ -91,7 +91,7 @@ export default function LandingPage() {
             <Link href="/dashboard" className="w-full sm:w-auto">
               <Button
                 size="lg"
-                className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 h-auto font-semibold shadow-lg hover:shadow-xl transition-all"
+                className="w-full sm:w-auto bg-gradient-to-r from-navy-600 to-navy-700 hover:from-navy-700 hover:to-navy-800 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 h-auto font-semibold shadow-lg hover:shadow-xl transition-all"
               >
                 Start Free Trial <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
@@ -133,13 +133,13 @@ export default function LandingPage() {
       <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-gray-50">
         <div className="container mx-auto max-w-7xl">
           <div className="text-center mb-12 sm:mb-16 lg:mb-20">
-            <Badge className="mb-4 bg-blue-100 text-blue-700 border-blue-200 text-xs sm:text-sm" variant="secondary">
+            <Badge className="mb-4 bg-navy-100 text-navy-700 border-navy-200 text-xs sm:text-sm" variant="secondary">
               POWERFUL FEATURES
             </Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4 sm:mb-6 px-4 sm:px-0">
               Everything You Need to
               <br className="hidden sm:block" />
-              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-navy-600 to-navy-700 bg-clip-text text-transparent">
                 {" "}
                 Scale Fast
               </span>
@@ -150,9 +150,9 @@ export default function LandingPage() {
           </div>
 
           <div className="grid gap-6 sm:gap-8 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-blue-50">
+            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-navy-50">
               <CardHeader className="pb-4">
-                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-navy-500 to-navy-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <MessageSquare className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
                 <CardTitle className="text-lg sm:text-xl font-bold">Smart Auto-Replies</CardTitle>
@@ -178,9 +178,9 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-green-50">
+            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-amber-50">
               <CardHeader className="pb-4">
-                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Package className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
                 <CardTitle className="text-lg sm:text-xl font-bold">Smart Inventory</CardTitle>
@@ -206,9 +206,9 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-purple-50">
+            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-emerald-50">
               <CardHeader className="pb-4">
-                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
                 <CardTitle className="text-lg sm:text-xl font-bold">Sales Analytics</CardTitle>
@@ -234,9 +234,9 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-orange-50">
+            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-blue-50">
               <CardHeader className="pb-4">
-                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Users className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
                 <CardTitle className="text-lg sm:text-xl font-bold">Customer Hub</CardTitle>
@@ -262,9 +262,9 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-yellow-50">
+            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-purple-50">
               <CardHeader className="pb-4">
-                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
                 <CardTitle className="text-lg sm:text-xl font-bold">AI Intent Detection</CardTitle>
@@ -290,9 +290,9 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-pink-50">
+            <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-gradient-to-br from-white to-rose-50">
               <CardHeader className="pb-4">
-                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="h-12 w-12 sm:h-16 sm:w-16 bg-gradient-to-br from-rose-500 to-rose-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <Smartphone className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
                 <CardTitle className="text-lg sm:text-xl font-bold">Mobile-First</CardTitle>
@@ -322,29 +322,29 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 to-purple-600">
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-navy-600 to-navy-700">
         <div className="container mx-auto max-w-6xl text-center">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Trusted by Sellers Worldwide</h2>
-          <p className="text-lg sm:text-xl text-blue-100 mb-12 sm:mb-16 max-w-2xl mx-auto px-4 sm:px-0">
+          <p className="text-lg sm:text-xl text-navy-100 mb-12 sm:mb-16 max-w-2xl mx-auto px-4 sm:px-0">
             Join thousands of entrepreneurs who have transformed their social selling business
           </p>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
             <div className="text-center">
               <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">10K+</div>
-              <div className="text-blue-100 font-medium text-sm sm:text-base">Active Sellers</div>
+              <div className="text-navy-100 font-medium text-sm sm:text-base">Active Sellers</div>
             </div>
             <div className="text-center">
               <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">2M+</div>
-              <div className="text-blue-100 font-medium text-sm sm:text-base">Messages Automated</div>
+              <div className="text-navy-100 font-medium text-sm sm:text-base">Messages Automated</div>
             </div>
             <div className="text-center">
               <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">$50M+</div>
-              <div className="text-blue-100 font-medium text-sm sm:text-base">Sales Generated</div>
+              <div className="text-navy-100 font-medium text-sm sm:text-base">Sales Generated</div>
             </div>
             <div className="text-center">
               <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2">99.9%</div>
-              <div className="text-blue-100 font-medium text-sm sm:text-base">Uptime</div>
+              <div className="text-navy-100 font-medium text-sm sm:text-base">Uptime</div>
             </div>
           </div>
         </div>
@@ -354,7 +354,7 @@ export default function LandingPage() {
       <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12 sm:mb-16">
-            <Badge className="mb-4 bg-green-100 text-green-700 border-green-200 text-xs sm:text-sm" variant="secondary">
+            <Badge className="mb-4 bg-emerald-100 text-emerald-700 border-emerald-200 text-xs sm:text-sm" variant="secondary">
               SUCCESS STORIES
             </Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-6 px-4 sm:px-0">
@@ -371,7 +371,7 @@ export default function LandingPage() {
                   ))}
                 </div>
                 <p className="text-gray-700 mb-6 italic text-sm sm:text-base">
-                  "SellerKit transformed my WhatsApp business. I went from manually responding to 50+ messages daily to
+                  "Sellio transformed my WhatsApp business. I went from manually responding to 50+ messages daily to
                   having everything automated. My sales increased 300% in just 2 months!"
                 </p>
                 <div className="flex items-center gap-3">
@@ -419,7 +419,7 @@ export default function LandingPage() {
                   ))}
                 </div>
                 <p className="text-gray-700 mb-6 italic text-sm sm:text-base">
-                  "As a busy mom running a home business, SellerKit gives me my time back. The auto-replies handle
+                  "As a busy mom running a home business, Sellio gives me my time back. The auto-replies handle
                   customer questions while I focus on family. Perfect solution!"
                 </p>
                 <div className="flex items-center gap-3">
@@ -443,7 +443,7 @@ export default function LandingPage() {
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-12 sm:mb-16">
             <Badge
-              className="mb-4 bg-purple-100 text-purple-700 border-purple-200 text-xs sm:text-sm"
+              className="mb-4 bg-amber-100 text-amber-700 border-amber-200 text-xs sm:text-sm"
               variant="secondary"
             >
               SIMPLE PRICING
@@ -490,9 +490,9 @@ export default function LandingPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-blue-500 shadow-xl relative">
+            <Card className="border-2 border-navy-500 shadow-xl relative">
               <div className="absolute -top-3 sm:-top-4 left-1/2 transform -translate-x-1/2">
-                <Badge className="bg-blue-500 text-white px-3 sm:px-4 py-1 text-xs sm:text-sm">Most Popular</Badge>
+                <Badge className="bg-navy-500 text-white px-3 sm:px-4 py-1 text-xs sm:text-sm">Most Popular</Badge>
               </div>
               <CardHeader className="text-center pb-6 sm:pb-8">
                 <CardTitle className="text-xl sm:text-2xl font-bold">Professional</CardTitle>
@@ -529,7 +529,7 @@ export default function LandingPage() {
                   </li>
                 </ul>
                 <Link href="/signup" className="block">
-                  <Button className="w-full mt-6 sm:mt-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                  <Button className="w-full mt-6 sm:mt-8 bg-gradient-to-r from-navy-600 to-navy-700 hover:from-navy-700 hover:to-navy-800">
                     Start Free Trial
                   </Button>
                 </Link>
@@ -579,12 +579,12 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-navy-600 via-navy-700 to-navy-800">
         <div className="container mx-auto text-center max-w-4xl">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 px-4 sm:px-0">
             Ready to Transform Your Business?
           </h2>
-          <p className="text-lg sm:text-xl text-blue-100 mb-8 sm:mb-12 max-w-2xl mx-auto px-4 sm:px-0">
+          <p className="text-lg sm:text-xl text-navy-100 mb-8 sm:mb-12 max-w-2xl mx-auto px-4 sm:px-0">
             Join thousands of sellers who have automated their social selling process and increased their revenue by
             300%
           </p>
@@ -609,7 +609,7 @@ export default function LandingPage() {
             </Button>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mt-8 sm:mt-12 text-blue-100 text-sm sm:text-base">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mt-8 sm:mt-12 text-navy-100 text-sm sm:text-base">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               <span>Enterprise Security</span>
@@ -632,10 +632,10 @@ export default function LandingPage() {
           <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-5 mb-8 sm:mb-12">
             <div className="sm:col-span-2">
               <div className="flex items-center space-x-2 mb-6">
-                <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-navy-600 to-navy-700 rounded-xl flex items-center justify-center">
                   <MessageSquare className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                 </div>
-                <span className="text-lg sm:text-2xl font-bold text-emerald-400">
+                <span className="text-lg sm:text-2xl font-bold text-amber-400">
                   Sellio
                 </span>
               </div>
@@ -688,7 +688,7 @@ export default function LandingPage() {
 
           <div className="border-t border-gray-800 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-gray-400 text-xs sm:text-sm text-center sm:text-left">
-              © 2024 SellerKit. All rights reserved.
+              © 2024 Sellio. All rights reserved.
             </p>
             <div className="flex space-x-4 sm:space-x-6 text-xs sm:text-sm text-gray-400">
               <span className="hover:text-white cursor-pointer">Terms</span>

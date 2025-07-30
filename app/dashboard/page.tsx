@@ -303,7 +303,7 @@ export default function Dashboard() {
           </Button>
           <Button
             onClick={() => setIsWhatsAppModalOpen(true)}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 font-medium text-sm sm:text-base"
+            className="bg-gradient-to-r from-navy-600 to-navy-700 hover:from-navy-700 hover:to-navy-800 font-medium text-sm sm:text-base"
           >
             <Plus className="mr-2 h-4 w-4" />
             Connect WhatsApp
