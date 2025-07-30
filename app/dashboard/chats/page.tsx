@@ -187,7 +187,7 @@ export default function ChatsPage() {
                       <span className="text-xs text-gray-500">{chat.time}</span>
                     </div>
                   </div>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate mb-2">{chat.lastMessage}</p>
+                  <p className="text-xs sm:text-sm text-sellio-text-muted truncate mb-2">{chat.lastMessage}</p>
                   <div className="flex items-center justify-between">
                     <Badge variant="outline" className="text-xs border">
                       {chat.platform}

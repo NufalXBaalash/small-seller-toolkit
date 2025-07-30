@@ -215,7 +215,7 @@ export default function SignupPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-sellio-text-muted mb-4">
               Didn't receive the email? Check your spam folder or contact support.
             </p>
             <div className="space-y-2">
@@ -370,7 +370,7 @@ export default function SignupPage() {
                   autoComplete="new-password"
                 />
               </div>
-              <p className="text-xs text-gray-500">Must be at least 6 characters with letters</p>
+              <p className="text-xs text-sellio-text-muted">Must be at least 6 characters with letters</p>
             </div>
 
             <div className="space-y-2">
@@ -478,7 +478,7 @@ export default function SignupPage() {
             </Button>
           </div>
 
-          <div className="text-center text-sm mt-6">
+          <div className="text-center text-sm mt-6 text-sellio-text-muted">
             Already have an account?{" "}
             <Link href="/login" className="text-emerald-600 hover:underline">
               Sign in

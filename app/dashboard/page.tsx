@@ -292,7 +292,7 @@ export default function Dashboard() {
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-sellio-neutral-dark">
             Good morning, {userProfile?.first_name || "there"}! 👋
           </h1>
-          <p className="text-sellio-neutral-dark mt-1 sm:mt-2 text-sm sm:text-base">
+          <p className="text-sellio-text-muted mt-1 sm:mt-2 text-sm sm:text-base">
             Here's what's happening with your business today
           </p>
         </div>
@@ -315,7 +315,7 @@ export default function Dashboard() {
       <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-neutral-dark">Total Revenue</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-text-muted">Total Revenue</CardTitle>
             <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-success rounded-xl flex items-center justify-center">
               <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
@@ -334,7 +334,7 @@ export default function Dashboard() {
 
         <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-neutral-dark">Orders</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-text-muted">Orders</CardTitle>
             <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-primary rounded-xl flex items-center justify-center">
               <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
@@ -351,7 +351,7 @@ export default function Dashboard() {
 
         <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-neutral-dark">Active Chats</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-text-muted">Active Chats</CardTitle>
             <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-secondary rounded-xl flex items-center justify-center">
               <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
@@ -368,7 +368,7 @@ export default function Dashboard() {
 
         <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-neutral-dark">Customers</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-text-muted">Customers</CardTitle>
             <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-accent rounded-xl flex items-center justify-center">
               <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
@@ -391,7 +391,7 @@ export default function Dashboard() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
               <div>
                 <CardTitle className="text-lg sm:text-xl font-bold">Recent Activity</CardTitle>
-                <CardDescription className="text-sm sm:text-base">
+                <CardDescription className="text-sellio-text-muted text-sm sm:text-base">
                   Latest orders and customer interactions
                 </CardDescription>
               </div>
@@ -413,7 +413,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 space-y-1 min-w-0">
                     <p className="font-medium text-sellio-neutral-dark text-sm sm:text-base">{activity.title}</p>
-                    <p className="text-sellio-neutral-dark text-xs sm:text-sm">{activity.description}</p>
+                    <p className="text-sellio-text-muted text-xs sm:text-sm">{activity.description}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <Badge variant="secondary" className="text-xs bg-sellio-secondary text-sellio-neutral-dark">
@@ -424,8 +424,8 @@ export default function Dashboard() {
               ))
             ) : (
               <div className="text-center py-8">
-                <p className="text-sellio-neutral-dark">No recent activity</p>
-                <p className="text-sm text-sellio-neutral-dark mt-1">Start by adding products or connecting WhatsApp</p>
+                <p className="text-sellio-text-muted">No recent activity</p>
+                <p className="text-sm text-sellio-text-muted mt-1">Start by adding products or connecting WhatsApp</p>
               </div>
             )}
           </CardContent>
@@ -435,7 +435,7 @@ export default function Dashboard() {
         <Card className="lg:col-span-3 border-0 shadow-lg">
           <CardHeader className="pb-4 sm:pb-6">
             <CardTitle className="text-lg sm:text-xl font-bold">Quick Actions</CardTitle>
-            <CardDescription className="text-sm sm:text-base">Common tasks and shortcuts</CardDescription>
+            <CardDescription className="text-sellio-text-muted text-sm sm:text-base">Common tasks and shortcuts</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 sm:space-y-4">
             <Button
@@ -474,7 +474,7 @@ export default function Dashboard() {
       <Card className="border-0 shadow-lg">
         <CardHeader className="pb-4 sm:pb-6">
           <CardTitle className="text-lg sm:text-xl font-bold">Platform Integrations</CardTitle>
-          <CardDescription className="text-sm sm:text-base">
+          <CardDescription className="text-sellio-text-muted text-sm sm:text-base">
             Connect your social platforms to start automating
           </CardDescription>
         </CardHeader>
@@ -487,7 +487,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="font-semibold text-sellio-neutral-dark text-sm sm:text-base">WhatsApp Business</p>
-                  <p className="text-sellio-neutral-dark text-xs sm:text-sm">Connect your WhatsApp account</p>
+                  <p className="text-sellio-text-muted text-xs sm:text-sm">Connect your WhatsApp account</p>
                 </div>
               </div>
               <Button
@@ -505,7 +505,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="font-semibold text-sellio-neutral-dark text-sm sm:text-base">Facebook Messenger</p>
-                  <p className="text-sellio-neutral-dark text-xs sm:text-sm">Connect your Facebook Page</p>
+                  <p className="text-sellio-text-muted text-xs sm:text-sm">Connect your Facebook Page</p>
                 </div>
               </div>
               <Button className="bg-sellio-accent hover:bg-sellio-accent/90 w-full sm:w-auto text-sm sm:text-base text-white">Connect</Button>

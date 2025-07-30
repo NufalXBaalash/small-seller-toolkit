@@ -93,7 +93,7 @@ const config: Config = {
           DEFAULT: '#222B45',
         },
         'sellio-text-muted': {
-          DEFAULT: '#6B7280',
+          DEFAULT: '#475569', // Blue Gray 700
         },
         'sellio-success': {
           DEFAULT: '#22C55E',

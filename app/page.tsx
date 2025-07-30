@@ -82,7 +82,7 @@ export default function LandingPage() {
             </span>
           </h1>
 
-          <p className="text-lg sm:text-xl md:text-2xl text-sellio-neutral-dark mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed px-4 sm:px-0">
+          <p className="text-lg sm:text-xl md:text-2xl text-sellio-text-muted mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed px-4 sm:px-0">
             Automate customer conversations, manage inventory, and grow your social selling business with AI-powered
             tools designed for mobile entrepreneurs.
           </p>
@@ -107,7 +107,7 @@ export default function LandingPage() {
           </div>
 
           {/* Social Proof */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8 text-sm text-sellio-neutral-dark px-4 sm:px-0">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-8 text-sm text-sellio-text-muted px-4 sm:px-0">
             <div className="flex items-center gap-2">
               <div className="flex -space-x-2">
                 {[1, 2, 3, 4, 5].map((i) => (
@@ -144,7 +144,7 @@ export default function LandingPage() {
                 Scale Fast
               </span>
             </h2>
-            <p className="text-lg sm:text-xl text-sellio-neutral-dark max-w-3xl mx-auto px-4 sm:px-0">
+            <p className="text-lg sm:text-xl text-sellio-text-muted max-w-3xl mx-auto px-4 sm:px-0">
               Built specifically for mobile-first entrepreneurs who sell through WhatsApp and Facebook Marketplace
             </p>
           </div>
@@ -161,7 +161,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-xs sm:text-sm text-sellio-neutral-dark">
+                <ul className="space-y-2 text-xs sm:text-sm text-sellio-text-muted">
                   <li className="flex items-center gap-2">
                     <Check className="h-3 w-3 sm:h-4 sm:w-4 text-sellio-success flex-shrink-0" />
                     24/7 instant responses
@@ -189,7 +189,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-xs sm:text-sm text-sellio-neutral-dark">
+                <ul className="space-y-2 text-xs sm:text-sm text-sellio-text-muted">
                   <li className="flex items-center gap-2">
                     <Check className="h-3 w-3 sm:h-4 sm:w-4 text-sellio-success flex-shrink-0" />
                     Real-time stock tracking
@@ -217,7 +217,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-xs sm:text-sm text-sellio-neutral-dark">
+                <ul className="space-y-2 text-xs sm:text-sm text-sellio-text-muted">
                   <li className="flex items-center gap-2">
                     <Check className="h-3 w-3 sm:h-4 sm:w-4 text-sellio-success flex-shrink-0" />
                     Revenue tracking
@@ -245,7 +245,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-xs sm:text-sm text-sellio-neutral-dark">
+                <ul className="space-y-2 text-xs sm:text-sm text-sellio-text-muted">
                   <li className="flex items-center gap-2">
                     <Check className="h-3 w-3 sm:h-4 sm:w-4 text-sellio-success flex-shrink-0" />
                     Auto customer profiles
@@ -273,7 +273,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-xs sm:text-sm text-sellio-neutral-dark">
+                <ul className="space-y-2 text-xs sm:text-sm text-sellio-text-muted">
                   <li className="flex items-center gap-2">
                     <Check className="h-3 w-3 sm:h-4 sm:w-4 text-sellio-success flex-shrink-0" />
                     Smart categorization
@@ -301,7 +301,7 @@ export default function LandingPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-xs sm:text-sm text-sellio-neutral-dark">
+                <ul className="space-y-2 text-xs sm:text-sm text-sellio-text-muted">
                   <li className="flex items-center gap-2">
                     <Check className="h-3 w-3 sm:h-4 sm:w-4 text-sellio-success flex-shrink-0" />
                     Mobile optimized
@@ -325,7 +325,7 @@ export default function LandingPage() {
       <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-sellio-primary">
         <div className="container mx-auto max-w-6xl text-center">
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">Trusted by Sellers Worldwide</h2>
-          <p className="text-lg sm:text-xl text-sellio-secondary mb-12 sm:mb-16 max-w-2xl mx-auto px-4 sm:px-0">
+          <p className="text-lg sm:text-xl text-sellio-text-muted mb-12 sm:mb-16 max-w-2xl mx-auto px-4 sm:px-0">
             Join thousands of entrepreneurs who have transformed their social selling business
           </p>
 
@@ -370,7 +370,7 @@ export default function LandingPage() {
                     <Star key={i} className="h-3 w-3 sm:h-4 sm:w-4 fill-sellio-secondary text-sellio-secondary" />
                   ))}
                 </div>
-                <p className="text-sellio-neutral-dark mb-6 italic text-sm sm:text-base">
+                <p className="text-sellio-text-muted mb-6 italic text-sm sm:text-base">
                   "Sellio transformed my WhatsApp business. I went from manually responding to 50+ messages daily to
                   having everything automated. My sales increased 300% in just 2 months!"
                 </p>
@@ -394,7 +394,7 @@ export default function LandingPage() {
                     <Star key={i} className="h-3 w-3 sm:h-4 sm:w-4 fill-sellio-secondary text-sellio-secondary" />
                   ))}
                 </div>
-                <p className="text-sellio-neutral-dark mb-6 italic text-sm sm:text-base">
+                <p className="text-sellio-text-muted mb-6 italic text-sm sm:text-base">
                   "The inventory management is a game-changer. I never run out of stock anymore, and the analytics help
                   me understand which products sell best. Highly recommended!"
                 </p>
@@ -418,7 +418,7 @@ export default function LandingPage() {
                     <Star key={i} className="h-3 w-3 sm:h-4 sm:w-4 fill-sellio-secondary text-sellio-secondary" />
                   ))}
                 </div>
-                <p className="text-sellio-neutral-dark mb-6 italic text-sm sm:text-base">
+                <p className="text-sellio-text-muted mb-6 italic text-sm sm:text-base">
                   "As a busy mom running a home business, Sellio gives me my time back. The auto-replies handle
                   customer questions while I focus on family. Perfect solution!"
                 </p>
@@ -451,7 +451,7 @@ export default function LandingPage() {
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-sellio-neutral-dark mb-6 px-4 sm:px-0">
               Start Free, Scale as You Grow
             </h2>
-            <p className="text-lg sm:text-xl text-sellio-neutral-dark max-w-2xl mx-auto px-4 sm:px-0">
+            <p className="text-lg sm:text-xl text-sellio-text-muted max-w-2xl mx-auto px-4 sm:px-0">
               No setup fees, no hidden costs. Pay only for what you use.
             </p>
           </div>
@@ -584,7 +584,7 @@ export default function LandingPage() {
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-6 px-4 sm:px-0">
             Ready to Transform Your Business?
           </h2>
-          <p className="text-lg sm:text-xl text-sellio-secondary mb-8 sm:mb-12 max-w-2xl mx-auto px-4 sm:px-0">
+          <p className="text-lg sm:text-xl text-sellio-text-muted mb-8 sm:mb-12 max-w-2xl mx-auto px-4 sm:px-0">
             Join thousands of sellers who have automated their social selling process and increased their revenue by
             300%
           </p>
@@ -609,7 +609,7 @@ export default function LandingPage() {
             </Button>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mt-8 sm:mt-12 text-sellio-secondary text-sm sm:text-base">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 mt-8 sm:mt-12 text-sellio-text-muted text-sm sm:text-base">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               <span>Enterprise Security</span>
@@ -639,7 +639,7 @@ export default function LandingPage() {
                   Sellio
                 </span>
               </div>
-              <p className="text-sellio-neutral-dark mb-6 max-w-md text-sm sm:text-base">
+              <p className="text-sellio-text-muted mb-6 max-w-md text-sm sm:text-base">
                 Empowering small sellers with smart automation tools to grow their social selling business.
               </p>
               <div className="flex space-x-4">
@@ -657,7 +657,7 @@ export default function LandingPage() {
 
             <div>
               <h3 className="font-semibold mb-4 text-base sm:text-lg">Product</h3>
-              <ul className="space-y-3 text-sellio-neutral-dark text-sm sm:text-base">
+              <ul className="space-y-3 text-sellio-text-muted text-sm sm:text-base">
                 <li className="hover:text-white cursor-pointer">Features</li>
                 <li className="hover:text-white cursor-pointer">Pricing</li>
                 <li className="hover:text-white cursor-pointer">Integrations</li>
@@ -667,7 +667,7 @@ export default function LandingPage() {
 
             <div>
               <h3 className="font-semibold mb-4 text-base sm:text-lg">Support</h3>
-              <ul className="space-y-3 text-sellio-neutral-dark text-sm sm:text-base">
+              <ul className="space-y-3 text-sellio-text-muted text-sm sm:text-base">
                 <li className="hover:text-white cursor-pointer">Help Center</li>
                 <li className="hover:text-white cursor-pointer">Contact Us</li>
                 <li className="hover:text-white cursor-pointer">Status</li>
@@ -677,7 +677,7 @@ export default function LandingPage() {
 
             <div>
               <h3 className="font-semibold mb-4 text-base sm:text-lg">Company</h3>
-              <ul className="space-y-3 text-sellio-neutral-dark text-sm sm:text-base">
+              <ul className="space-y-3 text-sellio-text-muted text-sm sm:text-base">
                 <li className="hover:text-white cursor-pointer">About</li>
                 <li className="hover:text-white cursor-pointer">Blog</li>
                 <li className="hover:text-white cursor-pointer">Careers</li>
@@ -687,10 +687,10 @@ export default function LandingPage() {
           </div>
 
           <div className="border-t border-gray-800 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="text-sellio-neutral-dark text-xs sm:text-sm text-center sm:text-left">
+            <p className="text-sellio-text-muted text-xs sm:text-sm text-center sm:text-left">
               © 2024 Sellio. All rights reserved.
             </p>
-            <div className="flex space-x-4 sm:space-x-6 text-xs sm:text-sm text-sellio-neutral-dark">
+            <div className="flex space-x-4 sm:space-x-6 text-xs sm:text-sm text-sellio-text-muted">
               <span className="hover:text-white cursor-pointer">Terms</span>
               <span className="hover:text-white cursor-pointer">Privacy</span>
               <span className="hover:text-white cursor-pointer">Cookies</span>

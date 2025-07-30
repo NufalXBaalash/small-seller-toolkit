@@ -68,14 +68,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar variant="inset" {...props}>
       <SidebarHeader>
         <div className="flex items-center space-x-2 px-4 py-2">
-          <div className="h-8 w-8 bg-gradient-to-br from-navy-600 to-navy-700 rounded-lg flex items-center justify-center">
+          <div className="h-8 w-8 bg-sellio-primary rounded-lg flex items-center justify-center">
             <MessageSquare className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold bg-gradient-to-r from-navy-600 to-navy-700 bg-clip-text text-transparent">
+            <span className="text-lg font-bold text-sellio-primary">
               Sellio
             </span>
-            {userProfile?.business_name && <span className="text-xs text-gray-600">{userProfile.business_name}</span>}
+            {userProfile?.business_name && <span className="text-xs text-sellio-text-muted">{userProfile.business_name}</span>}
           </div>
         </div>
       </SidebarHeader>
@@ -101,7 +101,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="px-2 py-1 text-xs text-gray-600">
+            <div className="px-2 py-1 text-xs text-sellio-text-muted">
               {userProfile?.first_name} {userProfile?.last_name}
             </div>
           </SidebarMenuItem>
