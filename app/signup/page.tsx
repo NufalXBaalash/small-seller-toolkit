@@ -9,13 +9,36 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
+import { Checkbox } from "@/components/ui/checkbox"
 import { MessageSquare, Mail, Lock, User, Phone, Loader2, AlertCircle, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/hooks/use-toast"
 
+interface SignupFormData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  businessName: string;
+  password: string;
+  confirmPassword: string;
+}
+
+interface UserMetadata {
+  firstName: string;
+  lastName: string;
+  businessName: string;
+  phoneNumber: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  business_name?: string;
+  phone_number?: string;
+}
+
 export default function SignupPage() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<SignupFormData>({
     firstName: "",
     lastName: "",
     email: "",
@@ -27,49 +50,107 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   const { signUp } = useAuth()
   const router = useRouter()
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const validatePhone = (phone: string): boolean => {
+    if (!phone.trim()) return true // Phone is optional
+    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/
+    return phoneRegex.test(phone.replace(/\s|-|\(|\)/g, ''))
+  }
+
+  const validatePassword = (password: string): { isValid: boolean; message?: string } => {
+    if (password.length < 6) {
+      return { isValid: false, message: "Password must be at least 6 characters long" }
+    }
+    if (!/(?=.*[a-zA-Z])/.test(password)) {
+      return { isValid: false, message: "Password must contain at least one letter" }
+    }
+    return { isValid: true }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+    
+    // Clear error when user starts typing
+    if (error) setError("")
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
     setSuccess(false)
 
-    // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
-      setIsLoading(false)
-      return
-    }
-
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters")
-      setIsLoading(false)
-      return
-    }
-
-    if (!formData.firstName.trim()) {
-      setError("First name is required")
-      setIsLoading(false)
-      return
-    }
-
     try {
-      await signUp(formData.email, formData.password, {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        businessName: formData.businessName,
-        phoneNumber: formData.phone,
+      // Client-side validation
+      if (!formData.firstName.trim()) {
+        throw new Error("First name is required")
+      }
+
+      if (!formData.email.trim()) {
+        throw new Error("Email is required")
+      }
+
+      if (!validateEmail(formData.email)) {
+        throw new Error("Please enter a valid email address")
+      }
+
+      if (!formData.password) {
+        throw new Error("Password is required")
+      }
+
+      const passwordValidation = validatePassword(formData.password)
+      if (!passwordValidation.isValid) {
+        throw new Error(passwordValidation.message)
+      }
+
+      if (formData.password !== formData.confirmPassword) {
+        throw new Error("Passwords do not match")
+      }
+
+      if (formData.phone && !validatePhone(formData.phone)) {
+        throw new Error("Please enter a valid phone number")
+      }
+
+      if (!termsAccepted) {
+        throw new Error("Please accept the Terms of Service and Privacy Policy")
+      }
+
+      // Prepare user metadata with multiple formats for compatibility
+      const userMetadata: UserMetadata = {
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        businessName: formData.businessName.trim(),
+        phoneNumber: formData.phone.trim(),
+        // Additional formats that Supabase might expect
+        full_name: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
+        first_name: formData.firstName.trim(),
+        last_name: formData.lastName.trim(),
+        business_name: formData.businessName.trim(),
+        phone_number: formData.phone.trim(),
+      }
+
+      console.log("Attempting to sign up with:", {
+        email: formData.email,
+        metadata: userMetadata
       })
+
+      // Call the signUp function from auth context
+      const result = await signUp(formData.email.trim(), formData.password, userMetadata)
+      
+      console.log("Signup result:", result)
 
       setSuccess(true)
       toast({
@@ -80,17 +161,25 @@ export default function SignupPage() {
       // Redirect to login after a short delay
       setTimeout(() => {
         router.push("/login?message=Please check your email to verify your account")
-      }, 2000)
-    } catch (error: any) {
-      console.error("Signup error:", error)
-      let errorMessage = "Failed to create account"
+      }, 3000)
 
-      if (error.message?.includes("already registered")) {
-        errorMessage = "An account with this email already exists"
-      } else if (error.message?.includes("password")) {
-        errorMessage = "Password is too weak"
-      } else if (error.message) {
-        errorMessage = error.message
+    } catch (error: unknown) {
+      console.error("Signup error:", error)
+      
+      let errorMessage = "Failed to create account. Please try again."
+
+      if (error instanceof Error) {
+        if (error.message.includes("User already registered")) {
+          errorMessage = "An account with this email already exists. Please sign in instead."
+        } else if (error.message.includes("Password should be at least")) {
+          errorMessage = "Password is too weak. Please choose a stronger password."
+        } else if (error.message.includes("Invalid email")) {
+          errorMessage = "Please enter a valid email address."
+        } else if (error.message.includes("signup_disabled")) {
+          errorMessage = "New user registration is currently disabled. Please contact support."
+        } else if (error.message) {
+          errorMessage = error.message
+        }
       }
 
       setError(errorMessage)
@@ -104,9 +193,16 @@ export default function SignupPage() {
     }
   }
 
+  const handleSocialSignup = (provider: 'google' | 'facebook') => {
+    toast({
+      title: "Feature Coming Soon",
+      description: `${provider} signup will be available soon.`,
+    })
+  }
+
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
@@ -120,11 +216,32 @@ export default function SignupPage() {
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-sm text-gray-600 mb-4">
-              Didn't receive the email? Check your spam folder or try signing up again.
+              Didn't receive the email? Check your spam folder or contact support.
             </p>
-            <Link href="/login">
-              <Button className="w-full">Go to Sign In</Button>
-            </Link>
+            <div className="space-y-2">
+              <Link href="/login">
+                <Button className="w-full">Go to Sign In</Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => {
+                  setSuccess(false)
+                  setFormData({
+                    firstName: "",
+                    lastName: "",
+                    email: "",
+                    phone: "",
+                    businessName: "",
+                    password: "",
+                    confirmPassword: "",
+                  })
+                  setTermsAccepted(false)
+                }}
+              >
+                Try Again
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -132,21 +249,21 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <MessageSquare className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">SellerKit</span>
+            <MessageSquare className="h-8 w-8 text-emerald-600" />
+            <span className="text-2xl font-bold text-gray-900">Sellio</span>
           </div>
           <CardTitle>Create Your Account</CardTitle>
           <CardDescription>Start automating your social selling business today</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700">{error}</p>
               </div>
             )}
@@ -159,11 +276,14 @@ export default function SignupPage() {
                   <Input
                     id="firstName"
                     name="firstName"
+                    type="text"
                     placeholder="John"
                     className="pl-10"
                     value={formData.firstName}
                     onChange={handleChange}
                     required
+                    disabled={isLoading}
+                    maxLength={50}
                   />
                 </div>
               </div>
@@ -172,15 +292,18 @@ export default function SignupPage() {
                 <Input
                   id="lastName"
                   name="lastName"
+                  type="text"
                   placeholder="Doe"
                   value={formData.lastName}
                   onChange={handleChange}
+                  disabled={isLoading}
+                  maxLength={50}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">Email Address *</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -192,6 +315,8 @@ export default function SignupPage() {
                   value={formData.email}
                   onChange={handleChange}
                   required
+                  disabled={isLoading}
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -208,6 +333,8 @@ export default function SignupPage() {
                   className="pl-10"
                   value={formData.phone}
                   onChange={handleChange}
+                  disabled={isLoading}
+                  autoComplete="tel"
                 />
               </div>
             </div>
@@ -217,9 +344,12 @@ export default function SignupPage() {
               <Input
                 id="businessName"
                 name="businessName"
+                type="text"
                 placeholder="Your Business Name"
                 value={formData.businessName}
                 onChange={handleChange}
+                disabled={isLoading}
+                maxLength={100}
               />
             </div>
 
@@ -236,9 +366,11 @@ export default function SignupPage() {
                   value={formData.password}
                   onChange={handleChange}
                   required
+                  disabled={isLoading}
+                  autoComplete="new-password"
                 />
               </div>
-              <p className="text-xs text-gray-500">Must be at least 6 characters</p>
+              <p className="text-xs text-gray-500">Must be at least 6 characters with letters</p>
             </div>
 
             <div className="space-y-2">
@@ -254,25 +386,38 @@ export default function SignupPage() {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   required
+                  disabled={isLoading}
+                  autoComplete="new-password"
                 />
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <input type="checkbox" id="terms" className="rounded" required />
-              <Label htmlFor="terms" className="text-sm">
+            <div className="flex items-start space-x-2">
+              <Checkbox
+                id="terms"
+                checked={termsAccepted}
+                onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                disabled={isLoading}
+                required
+              />
+              <Label htmlFor="terms" className="text-sm leading-4">
                 I agree to the{" "}
-                <Link href="/terms" className="text-blue-600 hover:underline">
+                <Link href="/terms" className="text-emerald-600 hover:underline" target="_blank">
                   Terms of Service
                 </Link>{" "}
                 and{" "}
-                <Link href="/privacy" className="text-blue-600 hover:underline">
+                <Link href="/privacy" className="text-emerald-600 hover:underline" target="_blank">
                   Privacy Policy
                 </Link>
               </Label>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700" 
+              size="lg" 
+              disabled={isLoading || !termsAccepted}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -294,7 +439,12 @@ export default function SignupPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4 mt-6">
-            <Button variant="outline" disabled={isLoading}>
+            <Button 
+              variant="outline" 
+              disabled={isLoading}
+              onClick={() => handleSocialSignup('google')}
+              type="button"
+            >
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
@@ -315,7 +465,12 @@ export default function SignupPage() {
               </svg>
               Google
             </Button>
-            <Button variant="outline" disabled={isLoading}>
+            <Button 
+              variant="outline" 
+              disabled={isLoading}
+              onClick={() => handleSocialSignup('facebook')}
+              type="button"
+            >
               <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
               </svg>
@@ -325,7 +480,7 @@ export default function SignupPage() {
 
           <div className="text-center text-sm mt-6">
             Already have an account?{" "}
-            <Link href="/login" className="text-blue-600 hover:underline">
+            <Link href="/login" className="text-emerald-600 hover:underline">
               Sign in
             </Link>
           </div>

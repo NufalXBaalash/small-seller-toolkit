@@ -2,14 +2,15 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { MessageSquare, Mail, Lock, Loader2, AlertCircle } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { MessageSquare, Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/hooks/use-toast"
@@ -17,49 +18,168 @@ import { toast } from "@/hooks/use-toast"
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{email?: string; password?: string}>({})
 
   const { signIn } = useAuth()
   const router = useRouter()
 
+  // Email validation
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  // Password validation
+  const validatePassword = (password: string): boolean => {
+    return password.length >= 6
+  }
+
+  // Clear errors when user starts typing
+  const handleEmailChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setEmail(value)
+    setError("")
+    
+    if (fieldErrors.email) {
+      setFieldErrors(prev => ({ ...prev, email: undefined }))
+    }
+  }, [fieldErrors.email])
+
+  const handlePasswordChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setPassword(value)
+    setError("")
+    
+    if (fieldErrors.password) {
+      setFieldErrors(prev => ({ ...prev, password: undefined }))
+    }
+  }, [fieldErrors.password])
+
+  // Form validation
+  const validateForm = (): boolean => {
+    const errors: {email?: string; password?: string} = {}
+    
+    if (!email.trim()) {
+      errors.email = "Email is required"
+    } else if (!validateEmail(email)) {
+      errors.email = "Please enter a valid email address"
+    }
+    
+    if (!password) {
+      errors.password = "Password is required"
+    } else if (!validatePassword(password)) {
+      errors.password = "Password must be at least 6 characters"
+    }
+    
+    setFieldErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    
+    // Clear previous errors
     setError("")
+    setFieldErrors({})
+    
+    // Validate form
+    if (!validateForm()) {
+      return
+    }
+    
+    setIsLoading(true)
+
+    // Set a timeout to prevent infinite loading state
+    const timeoutId = setTimeout(() => {
+      setIsLoading(false)
+      setError("Login request timed out. Please check your connection and try again.")
+      toast({
+        title: "Sign in timed out",
+        description: "The request took too long to complete. Please try again.",
+        variant: "destructive",
+      })
+    }, 15000) // 15 second timeout
 
     try {
-      await signIn(email, password)
+      await signIn(email.trim(), password)
+      
+      // Clear the timeout since login was successful
+      clearTimeout(timeoutId)
+      
       toast({
         title: "Welcome back!",
         description: "You have been successfully signed in.",
       })
-      router.push("/dashboard")
+      
+      // Add a small delay before redirecting to ensure auth state is updated
+      setTimeout(() => {
+        router.push("/dashboard")
+      }, 500)
     } catch (error: any) {
-      setError(error.message || "Failed to sign in")
+      // Clear the timeout since we got a response
+      clearTimeout(timeoutId)
+      
+      // Handle specific error types
+      let errorMessage = "Please check your credentials and try again."
+      
+      if (error.message) {
+        if (error.message.includes("invalid-email")) {
+          errorMessage = "Please enter a valid email address."
+        } else if (error.message.includes("user-disabled")) {
+          errorMessage = "This account has been disabled. Please contact support."
+        } else if (error.message.includes("user-not-found")) {
+          errorMessage = "No account found with this email address."
+        } else if (error.message.includes("wrong-password")) {
+          errorMessage = "Incorrect password. Please try again."
+        } else if (error.message.includes("too-many-requests")) {
+          errorMessage = "Too many failed attempts. Please try again later."
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      setError(errorMessage)
       toast({
         title: "Sign in failed",
-        description: error.message || "Please check your credentials and try again.",
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
+      // Clear the timeout to prevent it from firing after we're done
+      clearTimeout(timeoutId)
       setIsLoading(false)
     }
   }
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword)
+  }
+
+  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    // Placeholder for social login implementation
+    toast({
+      title: "Coming Soon",
+      description: `${provider} login will be available soon.`,
+    })
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
+      <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <MessageSquare className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">SellerKit</span>
+            <MessageSquare className="h-8 w-8 text-emerald-600" />
+            <span className="text-2xl font-bold text-gray-900">Sellio</span>
           </div>
-          <CardTitle>Welcome Back</CardTitle>
+          <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>Sign in to your account to continue managing your business</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
@@ -68,19 +188,28 @@ export default function LoginPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email Address</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="Enter your email"
-                  className="pl-10"
+                  className={`pl-10 ${fieldErrors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
+                  onChange={handleEmailChange}
+                  disabled={isLoading}
+                  autoComplete="email"
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
                 />
               </div>
+              {fieldErrors.email && (
+                <p id="email-error" className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -89,29 +218,61 @@ export default function LoginPage() {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
-                  type="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
-                  className="pl-10"
+                  className={`pl-10 pr-10 ${fieldErrors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
+                  onChange={handlePasswordChange}
+                  disabled={isLoading}
+                  autoComplete="current-password"
+                  aria-describedby={fieldErrors.password ? "password-error" : undefined}
                 />
+                <button
+                  type="button"
+                  className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                  onClick={togglePasswordVisibility}
+                  disabled={isLoading}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
+              {fieldErrors.password && (
+                <p id="password-error" className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
 
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <input type="checkbox" id="remember" className="rounded" />
-                <Label htmlFor="remember" className="text-sm">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  disabled={isLoading}
+                />
+                <Label htmlFor="remember" className="text-sm cursor-pointer">
                   Remember me
                 </Label>
               </div>
-              <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
+              <Link 
+                href="/forgot-password" 
+                className="text-sm text-emerald-600 hover:underline focus:underline focus:outline-none"
+                tabIndex={isLoading ? -1 : 0}
+              >
                 Forgot password?
               </Link>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-emerald-600 hover:bg-emerald-700" 
+              size="lg" 
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -133,7 +294,12 @@ export default function LoginPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4 mt-6">
-            <Button variant="outline" disabled={isLoading}>
+            <Button 
+              variant="outline" 
+              disabled={isLoading}
+              onClick={() => handleSocialLogin('google')}
+              type="button"
+            >
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path
                   fill="currentColor"
@@ -154,7 +320,12 @@ export default function LoginPage() {
               </svg>
               Google
             </Button>
-            <Button variant="outline" disabled={isLoading}>
+            <Button 
+              variant="outline" 
+              disabled={isLoading}
+              onClick={() => handleSocialLogin('facebook')}
+              type="button"
+            >
               <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
               </svg>
@@ -162,9 +333,13 @@ export default function LoginPage() {
             </Button>
           </div>
 
-          <div className="text-center text-sm mt-6">
+          <div className="text-center text-sm mt-6 text-muted-foreground">
             {"Don't have an account? "}
-            <Link href="/signup" className="text-blue-600 hover:underline">
+            <Link 
+              href="/signup" 
+              className="text-emerald-600 hover:underline focus:underline focus:outline-none font-medium"
+              tabIndex={isLoading ? -1 : 0}
+            >
               Sign up
             </Link>
           </div>
