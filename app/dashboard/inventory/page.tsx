@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Package, Search, Plus, Edit, Trash2, AlertTriangle, Loader2, Eye } from "lucide-react"
 import { AddProductModal } from "@/components/add-product-modal"
 import { toast } from "@/components/ui/use-toast"
+import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 
 interface Product {
   id: string
@@ -34,15 +35,6 @@ export default function InventoryPage() {
   const [addProductModalOpen, setAddProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const { user } = useAuth()
-
-  useEffect(() => {
-    if (user?.id) {
-      console.log("User authenticated, fetching products for:", user.id)
-      fetchProducts()
-    } else {
-      console.log("User not authenticated or no user ID")
-    }
-  }, [user?.id])
 
   const fetchProducts = async () => {
     if (!user?.id) return
@@ -69,6 +61,18 @@ export default function InventoryPage() {
       setLoading(false)
     }
   }
+
+  // Use the visibility hook to refetch data when page becomes visible
+  useRefetchOnVisibility(fetchProducts)
+
+  useEffect(() => {
+    if (user?.id) {
+      console.log("User authenticated, fetching products for:", user.id)
+      fetchProducts()
+    } else {
+      console.log("User not authenticated or no user ID")
+    }
+  }, [user?.id])
 
   const handleProductUpdate = async (productId: string, updates: Partial<Product>) => {
     try {

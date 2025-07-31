@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
@@ -14,12 +14,21 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isRedirecting) {
+      setIsRedirecting(true)
       router.push("/login")
     }
-  }, [user, loading, router])
+  }, [user, loading, router, isRedirecting])
+
+  // Reset redirecting state when user changes
+  useEffect(() => {
+    if (user) {
+      setIsRedirecting(false)
+    }
+  }, [user])
 
   if (loading) {
     return (
@@ -32,7 +41,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  if (!user) {
+  if (!user || isRedirecting) {
     return null
   }
 

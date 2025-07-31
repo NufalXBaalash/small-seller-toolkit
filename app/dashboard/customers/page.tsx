@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Users, Search, Download, MessageSquare, Phone, Mail, Loader2, Plus, Edit, Trash2 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 
 interface Customer {
   id: string
@@ -35,12 +36,6 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const { user } = useAuth()
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchCustomers()
-    }
-  }, [user?.id])
-
   const fetchCustomers = async () => {
     if (!user?.id) return
 
@@ -56,6 +51,15 @@ export default function CustomersPage() {
       setLoading(false)
     }
   }
+
+  // Use the visibility hook to refetch data when page becomes visible
+  useRefetchOnVisibility(fetchCustomers)
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchCustomers()
+    }
+  }, [user?.id])
 
   const handleCustomerUpdate = async (customerId: string, updates: Partial<Customer>) => {
     try {

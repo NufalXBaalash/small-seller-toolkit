@@ -20,6 +20,7 @@ import {
   Cell,
 } from "recharts"
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Loader2, Calendar } from "lucide-react"
+import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 
 interface Order {
   id: string
@@ -53,12 +54,6 @@ export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d")
   const { user } = useAuth()
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchAnalytics()
-    }
-  }, [user?.id, timeRange])
-
   const fetchAnalytics = async () => {
     if (!user?.id) return
 
@@ -77,6 +72,15 @@ export default function AnalyticsPage() {
       setLoading(false)
     }
   }
+
+  // Use the visibility hook to refetch data when page becomes visible
+  useRefetchOnVisibility(fetchAnalytics)
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchAnalytics()
+    }
+  }, [user?.id, timeRange])
 
   // Calculate analytics from real data
   const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0)

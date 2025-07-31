@@ -133,6 +133,10 @@ export function AddProductModal({
         throw new Error("No authentication token available")
       }
 
+      console.log("Using token:", token.substring(0, 20) + "...")
+      console.log("Making request to:", url)
+      console.log("Request data:", productData)
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -143,8 +147,19 @@ export function AddProductModal({
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || `Failed to ${editingProduct ? 'update' : 'create'} product`)
+        let errorData = {}
+        try {
+          errorData = await response.json()
+        } catch (parseError) {
+          console.error("Failed to parse error response:", parseError)
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` }
+        }
+        
+        console.error("API Error Response:", errorData)
+        console.error("Response status:", response.status)
+        console.error("Response headers:", Object.fromEntries(response.headers.entries()))
+        
+        throw new Error((errorData as any).error || (errorData as any).details || `HTTP ${response.status}: ${response.statusText}`)
       }
 
       const { product } = await response.json()

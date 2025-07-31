@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Plus, Eye, Edit, Loader2, ShoppingCart, DollarSign, Calendar } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 
 interface Order {
   id: string
@@ -43,12 +44,6 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const { user } = useAuth()
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchOrders()
-    }
-  }, [user?.id])
-
   const fetchOrders = async () => {
     if (!user?.id) return
 
@@ -64,6 +59,15 @@ export default function OrdersPage() {
       setLoading(false)
     }
   }
+
+  // Use the visibility hook to refetch data when page becomes visible
+  useRefetchOnVisibility(fetchOrders)
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchOrders()
+    }
+  }, [user?.id])
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -41,7 +41,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isInitialized, setIsInitialized] = useState(false)
   const router = useRouter()
+
+  // Handle page visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && isInitialized) {
+        // Page became visible again, refresh auth state
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user && !user) {
+            setUser(session.user)
+            fetchUserProfile(session.user.id)
+          } else if (!session?.user && user) {
+            // User was logged out while tab was inactive
+            setUser(null)
+            setUserProfile(null)
+            setLoading(false)
+          }
+        })
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [isInitialized, user])
 
   useEffect(() => {
     // Get initial session
@@ -51,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchUserProfile(session.user.id)
       } else {
         setLoading(false)
+        setIsInitialized(true)
       }
     })
 
@@ -64,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         // If this is a new signup, the profile is created by the database trigger.
         // We just need to fetch it.
-        if (event === "SIGNED_UP") {
+        if (event === "SIGNED_UP" as any) {
           console.log("New user signed up, profile should be created by trigger. Fetching profile...")
         }
         await fetchUserProfile(session.user.id)
@@ -72,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserProfile(null)
         setLoading(false)
       }
+      setIsInitialized(true)
     })
 
     return () => subscription.unsubscribe()
@@ -98,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(null)
     } finally {
       setLoading(false)
+      setIsInitialized(true)
     }
   }
 

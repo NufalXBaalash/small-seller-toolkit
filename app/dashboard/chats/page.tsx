@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Search, Filter, MoreHorizontal, Phone, Video, Send, Paperclip, Smile, Loader2 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
+import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 
 interface Chat {
   id: string
@@ -46,12 +47,6 @@ export default function ChatsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const { user } = useAuth()
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchChats()
-    }
-  }, [user?.id])
-
   const fetchChats = async () => {
     if (!user?.id) return
 
@@ -74,6 +69,15 @@ export default function ChatsPage() {
       setIsLoading(false)
     }
   }
+
+  // Use the visibility hook to refetch data when page becomes visible
+  useRefetchOnVisibility(fetchChats)
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchChats()
+    }
+  }, [user?.id])
 
   const fetchMessages = async (chatId: string) => {
     try {

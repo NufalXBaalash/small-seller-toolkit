@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { WhatsAppConnectModal } from "@/components/whatsapp-connect-modal"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchUserDashboardData } from "@/lib/supabase"
+import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 import {
   MessageSquare,
   Package,
@@ -109,7 +110,7 @@ export default function Dashboard() {
       }> = []
 
       // Add recent orders
-      orders.slice(0, 2).forEach((order, index) => {
+      orders.slice(0, 2).forEach((order: any, index) => {
         if (order) {
           const customerName = Array.isArray(order.customers) 
             ? order.customers[0]?.name || "Unknown Customer"
@@ -129,7 +130,7 @@ export default function Dashboard() {
       })
 
       // Add recent messages
-      chats.slice(0, 2).forEach((chat, index) => {
+      chats.slice(0, 2).forEach((chat: any, index) => {
         if (chat && chat.unread_count && chat.unread_count > 0) {
           const customerName = Array.isArray(chat.customers) 
             ? chat.customers[0]?.name || "Unknown Customer"
@@ -175,6 +176,9 @@ export default function Dashboard() {
       setLoading(false)
     }
   }, [user?.id, getTimeAgo])
+
+  // Use the visibility hook to refetch data when page becomes visible
+  useRefetchOnVisibility(fetchDashboardData)
 
   useEffect(() => {
     fetchDashboardData()
