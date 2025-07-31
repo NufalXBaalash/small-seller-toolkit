@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { WhatsAppConnectModal } from "@/components/whatsapp-connect-modal"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
+import { fetchUserDashboardData } from "@/lib/supabase"
 import {
   MessageSquare,
   Package,
@@ -83,46 +83,10 @@ export default function Dashboard() {
       setLoading(true)
       setError(null)
 
-      // Use Promise.allSettled to handle partial failures gracefully
-      const [ordersResult, chatsResult, customersResult, productsResult] = await Promise.allSettled([
-        supabase
-          .from("orders")
-          .select("total_amount, status, created_at, customers(name)")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(10), // Limit to prevent excessive data loading
-
-        supabase
-          .from("chats")
-          .select("unread_count, status, customers(name), last_message, created_at")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .limit(10),
-
-        supabase
-          .from("customers")
-          .select("id, name, status, created_at")
-          .eq("user_id", user.id),
-
-        supabase
-          .from("products")
-          .select("name, stock")
-          .eq("user_id", user.id)
-          .lte("stock", 5)
-          .limit(5)
-      ])
-
+      const dashboardData = await fetchUserDashboardData(user.id)
+      
       // Extract data with fallbacks
-      const orders = ordersResult.status === 'fulfilled' ? ordersResult.value.data || [] : []
-      const chats = chatsResult.status === 'fulfilled' ? chatsResult.value.data || [] : []
-      const customers = customersResult.status === 'fulfilled' ? customersResult.value.data || [] : []
-      const products = productsResult.status === 'fulfilled' ? productsResult.value.data || [] : []
-
-      // Log any errors but don't fail completely
-      if (ordersResult.status === 'rejected') console.error("Orders fetch error:", ordersResult.reason)
-      if (chatsResult.status === 'rejected') console.error("Chats fetch error:", chatsResult.reason)
-      if (customersResult.status === 'rejected') console.error("Customers fetch error:", customersResult.reason)
-      if (productsResult.status === 'rejected') console.error("Products fetch error:", productsResult.reason)
+      const { orders, chats, customers, products, dailyStats } = dashboardData
 
       // Calculate stats with null checks
       const totalRevenue = orders.reduce((sum, order) => {
@@ -201,323 +165,222 @@ export default function Dashboard() {
         totalOrders,
         activeChats,
         totalCustomers,
-        recentActivity: recentActivity.slice(0, 3),
+        recentActivity
       })
 
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error)
-      setError("Failed to load dashboard data. Please try refreshing the page.")
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err)
+      setError("Failed to load dashboard data. Please try again.")
     } finally {
       setLoading(false)
     }
   }, [user?.id, getTimeAgo])
 
   useEffect(() => {
-    let mounted = true
-
-    if (user?.id && mounted) {
-      fetchDashboardData()
-    } else if (!user && mounted) {
-      setLoading(false)
-    }
-
-    // Cleanup function to prevent state updates on unmounted component
-    return () => {
-      mounted = false
-    }
-  }, [user?.id, fetchDashboardData])
+    fetchDashboardData()
+  }, [fetchDashboardData])
 
   const getActivityIcon = (type: string, status: string) => {
     switch (type) {
       case "order":
-        return <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-success" />
+        return <ShoppingCart className="h-4 w-4" />
       case "message":
-        return <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-primary" />
+        return <MessageSquare className="h-4 w-4" />
       case "alert":
-        return <AlertCircle className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-secondary" />
+        return <AlertCircle className="h-4 w-4" />
       default:
-        return <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-neutral-dark" />
+        return <CheckCircle className="h-4 w-4" />
     }
   }
 
   const getActivityBgColor = (type: string) => {
     switch (type) {
       case "order":
-        return "bg-sellio-neutral-light"
+        return "bg-blue-50 text-blue-700"
       case "message":
-        return "bg-sellio-neutral-light"
+        return "bg-green-50 text-green-700"
       case "alert":
-        return "bg-sellio-neutral-light"
+        return "bg-orange-50 text-orange-700"
       default:
-        return "bg-sellio-neutral-light"
+        return "bg-gray-50 text-gray-700"
     }
-  }
-
-  // Handle error state
-  if (error) {
-    return (
-      <div className="flex-1 space-y-6 sm:space-y-8 p-4 sm:p-6 md:p-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <AlertCircle className="h-8 w-8 text-sellio-danger mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-sellio-neutral-dark mb-2">Something went wrong</h2>
-            <p className="text-sellio-neutral-dark mb-4">{error}</p>
-            <Button onClick={fetchDashboardData} className="bg-sellio-primary hover:bg-sellio-primary/90 font-medium text-sm sm:text-base text-white">
-              Try Again
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   if (loading) {
     return (
-      <div className="flex-1 space-y-6 sm:space-y-8 p-4 sm:p-6 md:p-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p className="text-sellio-neutral-dark">Loading your dashboard...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Dashboard</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button onClick={fetchDashboardData}>Try Again</Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 space-y-6 sm:space-y-8 p-4 sm:p-6 md:p-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center justify-between">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-sellio-text-main">
-            Good morning, {userProfile?.first_name || "there"}! 👋
-          </h1>
-          <p className="text-sellio-primary mt-1 sm:mt-2 text-sm sm:text-base">
-            Here's what's happening with your business today
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back, {userProfile?.first_name || user?.email}!
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
-          <Button variant="outline" className="font-medium bg-transparent text-sm sm:text-base text-sellio-primary border-sellio-primary">
-            <Download className="mr-2 h-4 w-4" />
-            Export Data
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
           </Button>
-          <Button
-            onClick={() => setIsWhatsAppModalOpen(true)}
-            className="bg-sellio-primary hover:bg-sellio-primary/90 font-medium text-sm sm:text-base text-white"
-          >
-            <Plus className="mr-2 h-4 w-4" />
+          <Button onClick={() => setIsWhatsAppModalOpen(true)}>
+            <Zap className="h-4 w-4 mr-2" />
             Connect WhatsApp
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-primary">Total Revenue</CardTitle>
-            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-success rounded-xl flex items-center justify-center">
-              <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-            </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-bold text-sellio-neutral-dark">
-              ${(stats?.totalRevenue || 0).toFixed(2)}
+            <div className="text-2xl font-bold">
+              ${stats?.totalRevenue.toFixed(2) || "0.00"}
             </div>
-            <div className="flex items-center text-xs sm:text-sm text-sellio-success mt-1 sm:mt-2">
-              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
-              <span className="font-medium">+12.5%</span>
-              <span className="text-sellio-neutral-dark ml-1">from last month</span>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              +20.1% from last month
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-primary">Orders</CardTitle>
-            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-primary rounded-xl flex items-center justify-center">
-              <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-            </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-bold text-sellio-neutral-dark">{stats?.totalOrders || 0}</div>
-            <div className="flex items-center text-xs sm:text-sm text-sellio-success mt-1 sm:mt-2">
-              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
-              <span className="font-medium">+{stats?.totalOrders || 0} total</span>
-              <span className="text-sellio-neutral-dark ml-1">orders</span>
-            </div>
+            <div className="text-2xl font-bold">{stats?.totalOrders || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              +180.1% from last month
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-primary">Active Chats</CardTitle>
-            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-secondary rounded-xl flex items-center justify-center">
-              <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-            </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Chats</CardTitle>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-bold text-sellio-neutral-dark">{stats?.activeChats || 0}</div>
-            <div className="flex items-center text-xs sm:text-sm text-sellio-secondary mt-1 sm:mt-2">
-              <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
-              <span className="font-medium">{stats?.activeChats || 0} pending</span>
-              <span className="text-sellio-neutral-dark ml-1">responses</span>
-            </div>
+            <div className="text-2xl font-bold">{stats?.activeChats || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              +19% from last month
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 sm:pb-3">
-            <CardTitle className="text-xs sm:text-sm font-medium text-sellio-primary">Customers</CardTitle>
-            <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-accent rounded-xl flex items-center justify-center">
-              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
-            </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl sm:text-3xl font-bold text-sellio-neutral-dark">{stats?.totalCustomers || 0}</div>
-            <div className="flex items-center text-xs sm:text-sm text-sellio-success mt-1 sm:mt-2">
-              <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
-              <span className="font-medium">+{stats?.totalCustomers || 0} total</span>
-              <span className="text-sellio-neutral-dark ml-1">customers</span>
-            </div>
+            <div className="text-2xl font-bold">{stats?.totalCustomers || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              +201 since last month
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-7">
-        {/* Recent Activity */}
-        <Card className="lg:col-span-4 border-0 shadow-lg">
-          <CardHeader className="pb-4 sm:pb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0">
-              <div>
-                <CardTitle className="text-lg sm:text-xl font-bold">Recent Activity</CardTitle>
-                <CardDescription className="text-sellio-primary text-sm sm:text-base">
-                  Latest orders and customer interactions
-                </CardDescription>
-              </div>
-              <Button variant="outline" size="sm" className="self-start sm:self-auto bg-transparent text-sellio-primary border-sellio-primary">
-                <Eye className="mr-2 h-4 w-4" />
-                View All
-              </Button>
-            </div>
+      {/* Recent Activity */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <Card className="col-span-4">
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+            <CardDescription>
+              You have {stats?.recentActivity.length || 0} new activities
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 sm:space-y-6">
-            {stats?.recentActivity && stats.recentActivity.length > 0 ? (
-              stats.recentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className={`flex items-start sm:items-center space-x-3 sm:space-x-4 p-3 sm:p-4 rounded-xl bg-sellio-neutral-light`}
-                >
-                  <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-white flex-shrink-0">
+          <CardContent>
+            <div className="space-y-4">
+              {stats?.recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-center space-x-4">
+                  <div className={`p-2 rounded-full ${getActivityBgColor(activity.type)}`}>
                     {getActivityIcon(activity.type, activity.status)}
                   </div>
-                  <div className="flex-1 space-y-1 min-w-0">
-                    <p className="font-medium text-sellio-neutral-dark text-sm sm:text-base">{activity.title}</p>
-                    <p className="text-sellio-primary text-xs sm:text-sm">{activity.description}</p>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {activity.title}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {activity.description}
+                    </p>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <Badge variant="secondary" className="text-xs bg-sellio-secondary text-sellio-neutral-dark">
-                      {activity.time}
-                    </Badge>
+                  <div className="text-sm text-muted-foreground">
+                    {activity.time}
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-sellio-primary">No recent activity</p>
-                <p className="text-sm text-sellio-primary mt-1">Start by adding products or connecting WhatsApp</p>
-              </div>
-            )}
+              ))}
+              {(!stats?.recentActivity || stats.recentActivity.length === 0) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No recent activity
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <Card className="lg:col-span-3 border-0 shadow-lg">
-          <CardHeader className="pb-4 sm:pb-6">
-            <CardTitle className="text-lg sm:text-xl font-bold">Quick Actions</CardTitle>
-            <CardDescription className="text-sellio-primary text-sm sm:text-base">Common tasks and shortcuts</CardDescription>
+        <Card className="col-span-3">
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>
+              Common tasks and shortcuts
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3 sm:space-y-4">
-            <Button
-              className="w-full justify-start h-10 sm:h-12 bg-sellio-accent text-white border-sellio-accent text-sm sm:text-base"
-              variant="outline"
-            >
-              <Package className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-              Add New Product
+          <CardContent className="space-y-4">
+            <Button className="w-full justify-start" variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Product
             </Button>
-            <Button
-              className="w-full justify-start h-10 sm:h-12 bg-sellio-success text-white border-sellio-success text-sm sm:text-base"
-              variant="outline"
-            >
-              <Zap className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-              Create Auto-Reply
+            <Button className="w-full justify-start" variant="outline">
+              <Users className="h-4 w-4 mr-2" />
+              Add Customer
             </Button>
-            <Button
-              className="w-full justify-start h-10 sm:h-12 bg-sellio-secondary text-sellio-neutral-dark border-sellio-secondary text-sm sm:text-base"
-              variant="outline"
-            >
-              <Users className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-              Export Customer List
+            <Button className="w-full justify-start" variant="outline">
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Create Order
             </Button>
-            <Button
-              className="w-full justify-start h-10 sm:h-12 bg-sellio-primary text-white border-sellio-primary text-sm sm:text-base"
-              variant="outline"
-            >
-              <TrendingUp className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-              View Sales Report
+            <Button className="w-full justify-start" variant="outline">
+              <MessageSquare className="h-4 w-4 mr-2" />
+              View Messages
+            </Button>
+            <Button className="w-full justify-start" variant="outline">
+              <TrendingUp className="h-4 w-4 mr-2" />
+              View Analytics
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* Integration Status */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="pb-4 sm:pb-6">
-          <CardTitle className="text-lg sm:text-xl font-bold">Platform Integrations</CardTitle>
-          <CardDescription className="text-sellio-primary text-sm sm:text-base">
-            Connect your social platforms to start automating
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-2 border-dashed border-sellio-primary rounded-xl hover:border-sellio-success hover:bg-sellio-success/10 transition-all space-y-3 sm:space-y-0">
-              <div className="flex items-center space-x-3 sm:space-x-4">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-sellio-success rounded-xl flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-sellio-success" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sellio-neutral-dark text-sm sm:text-base">WhatsApp Business</p>
-                  <p className="text-sellio-primary text-xs sm:text-sm">Connect your WhatsApp account</p>
-                </div>
-              </div>
-              <Button
-                onClick={() => setIsWhatsAppModalOpen(true)}
-                className="bg-sellio-success hover:bg-sellio-success/90 w-full sm:w-auto text-sm sm:text-base text-white"
-              >
-                Connect
-              </Button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6 border-2 border-dashed border-sellio-accent rounded-xl hover:border-sellio-accent hover:bg-sellio-accent/10 transition-all space-y-3 sm:space-y-0">
-              <div className="flex items-center space-x-3 sm:space-x-4">
-                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-sellio-accent rounded-xl flex items-center justify-center flex-shrink-0">
-                  <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sellio-neutral-dark text-sm sm:text-base">Facebook Messenger</p>
-                  <p className="text-sellio-primary text-xs sm:text-sm">Connect your Facebook Page</p>
-                </div>
-              </div>
-              <Button className="bg-sellio-accent hover:bg-sellio-accent/90 w-full sm:w-auto text-sm sm:text-base text-white">Connect</Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* WhatsApp Connection Modal */}
-      {isWhatsAppModalOpen && (
-        <WhatsAppConnectModal open={isWhatsAppModalOpen} onOpenChange={setIsWhatsAppModalOpen} />
-      )}
+      {/* WhatsApp Connect Modal */}
+      <WhatsAppConnectModal
+        open={isWhatsAppModalOpen}
+        onOpenChange={setIsWhatsAppModalOpen}
+      />
     </div>
   )
 }

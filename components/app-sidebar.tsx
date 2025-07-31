@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Home, Settings, Package, Users, BarChart3, MessageSquare, LogOut } from "lucide-react"
+import { Home, Settings, Package, Users, BarChart3, MessageSquare, LogOut, ShoppingCart } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -27,9 +27,9 @@ const items = [
     icon: Home,
   },
   {
-    title: "Chat Management",
-    url: "/dashboard/chats",
-    icon: MessageSquare,
+    title: "Orders",
+    url: "/dashboard/orders",
+    icon: ShoppingCart,
   },
   {
     title: "Inventory",
@@ -37,14 +37,19 @@ const items = [
     icon: Package,
   },
   {
-    title: "Analytics",
-    url: "/dashboard/analytics",
-    icon: BarChart3,
-  },
-  {
     title: "Customers",
     url: "/dashboard/customers",
     icon: Users,
+  },
+  {
+    title: "Chats",
+    url: "/dashboard/chats",
+    icon: MessageSquare,
+  },
+  {
+    title: "Analytics",
+    url: "/dashboard/analytics",
+    icon: BarChart3,
   },
   {
     title: "Settings",

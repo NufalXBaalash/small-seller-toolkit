@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { supabase } from "@/lib/supabase"
+import { fetchUserChats, fetchChatMessages } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,57 +11,81 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Search, Filter, MoreHorizontal, Phone, Video, Send, Paperclip, Smile, Loader2 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 
+interface Chat {
+  id: string
+  platform: string
+  last_message: string | null
+  unread_count: number
+  status: string
+  created_at: string
+  updated_at: string
+  customers: {
+    id: string
+    name: string
+    email: string | null
+    phone_number: string | null
+  }
+}
+
+interface Message {
+  id: string
+  sender_type: string
+  content: string
+  message_type: string
+  is_read: boolean
+  created_at: string
+}
+
 export default function ChatsPage() {
-  const [chats, setChats] = useState([])
-  const [selectedChat, setSelectedChat] = useState(null)
-  const [messages, setMessages] = useState([])
+  const [chats, setChats] = useState<Chat[]>([])
+  const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
+  const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
   const { user } = useAuth()
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchChats()
     }
-  }, [user])
+  }, [user?.id])
 
   const fetchChats = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("chats")
-        .select(`
-        *,
-        customers (*)
-      `)
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false })
+    if (!user?.id) return
 
-      if (error) throw error
-      setChats(data || [])
-      if (data && data.length > 0) {
+    try {
+      setIsLoading(true)
+      const data = await fetchUserChats(user.id)
+      setChats(data)
+      if (data.length > 0) {
         setSelectedChat(data[0])
-        fetchMessages(data[0].id)
+        await fetchMessages(data[0].id)
       }
     } catch (error) {
       console.error("Error fetching chats:", error)
+      toast({
+        title: "Failed to load chats",
+        description: "Please try again",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const fetchMessages = async (chatId) => {
+  const fetchMessages = async (chatId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("chat_id", chatId)
-        .order("created_at", { ascending: true })
-
-      if (error) throw error
-      setMessages(data || [])
+      const data = await fetchChatMessages(chatId)
+      setMessages(data)
     } catch (error) {
       console.error("Error fetching messages:", error)
+      toast({
+        title: "Failed to load messages",
+        description: "Please try again",
+        variant: "destructive",
+      })
     }
   }
 
@@ -78,7 +102,7 @@ export default function ChatsPage() {
         body: JSON.stringify({
           chatId: selectedChat.id,
           message: newMessage,
-          userId: user.id,
+          userId: user?.id,
         }),
       })
 
@@ -116,6 +140,40 @@ export default function ChatsPage() {
     }
   }
 
+  const getTimeAgo = (dateString: string) => {
+    try {
+      const date = new Date(dateString)
+      const now = new Date()
+      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+
+      if (diffInMinutes < 0) return "Just now"
+      if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+      return `${Math.floor(diffInMinutes / 1440)}d ago`
+    } catch {
+      return "Unknown"
+    }
+  }
+
+  const filteredChats = chats.filter(chat =>
+    chat.customers.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    chat.platform.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    chat.last_message?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-sellio-neutral-dark">Loading chats...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
       <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center justify-between">
@@ -143,60 +201,81 @@ export default function ChatsPage() {
             <CardTitle className="text-lg sm:text-xl font-bold">Active Chats</CardTitle>
             <CardDescription className="text-sm sm:text-base">Manage your customer conversations</CardDescription>
             <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input placeholder="Search chats..." className="pl-10 border-gray-200 text-sm sm:text-base" />
+              <Search className="absolute left-3 top-3 h-4 w-4 text-sellio-primary" />
+              <Input 
+                placeholder="Search chats..." 
+                className="pl-10 border-gray-200 text-sm sm:text-base"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </CardHeader>
           <CardContent className="space-y-2 sm:space-y-3 max-h-96 sm:max-h-none overflow-y-auto">
-            {chats.map((chat) => (
-              <div
-                key={chat.id}
-                className="flex items-center space-x-3 p-3 sm:p-4 rounded-xl hover:bg-gray-50 cursor-pointer border border-transparent hover:border-gray-200 transition-all"
-              >
-                <div className="relative flex-shrink-0">
-                  <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
-                    <AvatarImage
-                      src={`/placeholder.svg?height=48&width=48&text=${chat.customers.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}`}
-                    />
-                    <AvatarFallback className="bg-gradient-to-br from-navy-500 to-navy-600 text-white font-semibold text-xs sm:text-sm">
-                      {chat.customers.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                  {chat.online && (
-                    <div className="absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 bg-green-500 border-2 border-white rounded-full"></div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">{chat.customers.name}</p>
-                    <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-                      {chat.unread > 0 && (
-                        <Badge
-                          variant="destructive"
-                          className="text-xs h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center"
-                        >
-                          {chat.unread}
-                        </Badge>
-                      )}
-                      <span className="text-xs text-gray-500">{chat.time}</span>
+            {filteredChats.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchTerm ? "No chats found matching your search." : "No chats yet. Start a conversation to see them here."}
+              </div>
+            ) : (
+              filteredChats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className={`flex items-center space-x-3 p-3 sm:p-4 rounded-xl hover:bg-gray-50 cursor-pointer border border-transparent hover:border-gray-200 transition-all ${
+                    selectedChat?.id === chat.id ? 'bg-gray-50 border-gray-200' : ''
+                  }`}
+                  onClick={() => {
+                    setSelectedChat(chat)
+                    fetchMessages(chat.id)
+                  }}
+                >
+                  <div className="relative flex-shrink-0">
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
+                      <AvatarImage
+                        src={`/placeholder.svg?height=48&width=48&text=${chat.customers.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}`}
+                      />
+                      <AvatarFallback className="bg-gradient-to-br from-navy-500 to-navy-600 text-white font-semibold text-xs sm:text-sm">
+                        {chat.customers.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    {chat.status === "active" && (
+                      <div className="absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 bg-green-500 border-2 border-white rounded-full"></div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">{chat.customers.name}</p>
+                      <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+                        {chat.unread_count > 0 && (
+                          <Badge
+                            variant="destructive"
+                            className="text-xs h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center"
+                          >
+                            {chat.unread_count}
+                          </Badge>
+                        )}
+                        <span className="text-xs text-gray-500">{getTimeAgo(chat.updated_at)}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs sm:text-sm text-sellio-primary truncate mb-2">
+                      {chat.last_message || "No messages yet"}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-xs border">
+                        {chat.platform}
+                      </Badge>
+                      <Badge className={`text-xs ${getStatusColor(chat.status)}`}>
+                        {chat.status.charAt(0).toUpperCase() + chat.status.slice(1)}
+                      </Badge>
                     </div>
                   </div>
-                  <p className="text-xs sm:text-sm text-sellio-primary truncate mb-2">{chat.lastMessage}</p>
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-xs border">
-                      {chat.platform}
-                    </Badge>
-                    <Badge className={`text-xs ${getStatusColor(chat.status)}`}>{chat.status}</Badge>
-                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -208,18 +287,24 @@ export default function ChatsPage() {
                 <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
                   <AvatarImage src="/placeholder.svg?height=48&width=48&text=MS" />
                   <AvatarFallback className="bg-gradient-to-br from-navy-500 to-navy-600 text-white font-semibold">
-                    MS
+                    {selectedChat?.customers.name.split(" ").map(n => n[0]).join("") || "MS"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 bg-green-500 border-2 border-white rounded-full"></div>
               </div>
               <div>
-                <CardTitle className="text-base sm:text-lg font-bold">Maria Santos</CardTitle>
+                <CardTitle className="text-base sm:text-lg font-bold">
+                  {selectedChat?.customers.name || "Select a chat"}
+                </CardTitle>
                 <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
-                  <Badge variant="outline" className="text-xs">
-                    WhatsApp
-                  </Badge>
-                  <span className="text-green-600 font-medium">Online</span>
+                  {selectedChat && (
+                    <>
+                      <Badge variant="outline" className="text-xs">
+                        {selectedChat.platform}
+                      </Badge>
+                      <span className="text-green-600 font-medium">Online</span>
+                    </>
+                  )}
                 </CardDescription>
               </div>
             </div>
@@ -237,36 +322,33 @@ export default function ChatsPage() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="h-64 sm:h-80 md:h-96 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
-              {/* Customer Message */}
-              <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl rounded-bl-md p-3 sm:p-4 max-w-xs shadow-sm">
-                  <p className="text-xs sm:text-sm text-gray-900">Hi! Do you have the iPhone case in blue?</p>
-                  <span className="text-xs text-gray-500 mt-2 block">2:30 PM</span>
+              {messages.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  {selectedChat ? "No messages yet. Start the conversation!" : "Select a chat to view messages."}
                 </div>
-              </div>
-
-              {/* Auto Reply */}
-              <div className="flex justify-end">
-                <div className="bg-gradient-to-r from-navy-600 to-navy-700 text-white rounded-2xl rounded-br-md p-3 sm:p-4 max-w-xs shadow-sm">
-                  <p className="text-xs sm:text-sm">
-                    Hello! Yes, we have iPhone cases in blue. Which model do you need?
-                  </p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-blue-100">2:31 PM</span>
-                    <Badge variant="secondary" className="text-xs bg-white/20 text-white border-white/30">
-                      Auto-Reply
-                    </Badge>
+              ) : (
+                messages.map((message) => (
+                  <div key={message.id} className={`flex ${message.sender_type === 'business' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`rounded-2xl p-3 sm:p-4 max-w-xs shadow-sm ${
+                      message.sender_type === 'business' 
+                        ? 'bg-gradient-to-r from-navy-600 to-navy-700 text-white rounded-br-md' 
+                        : 'bg-gray-100 rounded-bl-md'
+                    }`}>
+                      <p className="text-xs sm:text-sm">{message.content}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-gray-500">
+                          {getTimeAgo(message.created_at)}
+                        </span>
+                        {message.sender_type === 'auto' && (
+                          <Badge variant="secondary" className="text-xs bg-white/20 text-white border-white/30">
+                            Auto-Reply
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Customer Response */}
-              <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl rounded-bl-md p-3 sm:p-4 max-w-xs shadow-sm">
-                  <p className="text-xs sm:text-sm text-gray-900">iPhone 14 Pro please. How much?</p>
-                  <span className="text-xs text-gray-500 mt-2 block">2:32 PM</span>
-                </div>
-              </div>
+                ))
+              )}
             </div>
 
             {/* Message Input */}
@@ -314,6 +396,9 @@ export default function ChatsPage() {
                   <Input
                     placeholder="Type your message..."
                     className="pr-10 sm:pr-12 border-gray-200 text-sm sm:text-base"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                   />
                   <Button size="sm" variant="ghost" className="absolute right-1 top-1 h-6 w-6 sm:h-8 sm:w-8 p-0">
                     <Smile className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -321,7 +406,7 @@ export default function ChatsPage() {
                 </div>
                 <Button
                   onClick={sendMessage}
-                  disabled={isSending}
+                  disabled={isSending || !selectedChat}
                   className="bg-gradient-to-r from-navy-600 to-navy-700 hover:from-navy-700 hover:to-navy-800 h-8 sm:h-10 px-3 sm:px-4"
                 >
                   {isSending ? (

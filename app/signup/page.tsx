@@ -272,7 +272,7 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name *</Label>
                 <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <User className="absolute left-3 top-3 h-4 w-4 text-sellio-primary" />
                   <Input
                     id="firstName"
                     name="firstName"
@@ -305,7 +305,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="email">Email Address *</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-sellio-primary" />
                 <Input
                   id="email"
                   name="email"
@@ -324,7 +324,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
               <div className="relative">
-                <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Phone className="absolute left-3 top-3 h-4 w-4 text-sellio-primary" />
                 <Input
                   id="phone"
                   name="phone"
@@ -356,7 +356,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="password">Password *</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-sellio-primary" />
                 <Input
                   id="password"
                   name="password"
@@ -376,7 +376,7 @@ export default function SignupPage() {
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">Confirm Password *</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-sellio-primary" />
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"

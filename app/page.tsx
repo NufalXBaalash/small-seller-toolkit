@@ -68,23 +68,16 @@ export default function LandingPage() {
             🚀 Trusted by 10,000+ sellers worldwide
           </Badge>
 
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-sellio-text-main mb-6 sm:mb-8 leading-tight">
-            Turn Your
-            <span className="text-sellio-primary">
-              {" "}
-              WhatsApp{" "}
-            </span>
-            Into a
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-sellio-text-main mb-6 sm:mb-8 leading-tight">
+            Sell More. Work Less.
             <br className="hidden sm:block" />
-            <span className="text-sellio-secondary">
-              {" "}
-              Sales Machine
+            <span className="text-sellio-primary block text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-medium">
+              The Smart Sales Dashboard for WhatsApp & Facebook Sellers
             </span>
           </h1>
 
           <p className="text-lg sm:text-xl md:text-2xl text-sellio-primary mb-8 sm:mb-12 max-w-3xl mx-auto leading-relaxed px-4 sm:px-0">
-            Automate customer conversations, manage inventory, and grow your social selling business with AI-powered
-            tools designed for mobile entrepreneurs.
+            Automate customer conversations, manage inventory, and grow your social selling business with AI-powered tools designed for mobile entrepreneurs.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center mb-12 sm:mb-16 px-4 sm:px-0">
@@ -181,7 +174,7 @@ export default function LandingPage() {
             <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-white">
               <CardHeader className="pb-4">
                 <div className="h-12 w-12 sm:h-16 sm:w-16 bg-sellio-secondary rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Package className="h-6 w-6 sm:h-8 sm:w-8 text-sellio-primary" />
+                  <Package className="h-6 w-6 sm:h-8 sm:w-8 text-black" />
                 </div>
                 <CardTitle className="text-lg sm:text-xl font-bold text-sellio-text-main">Smart Inventory</CardTitle>
                 <CardDescription className="text-sellio-primary text-sm sm:text-base">
@@ -265,7 +258,7 @@ export default function LandingPage() {
             <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-white">
               <CardHeader className="pb-4">
                 <div className="h-12 w-12 sm:h-16 sm:w-16 bg-sellio-secondary rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-sellio-accent" />
+                  <Zap className="h-6 w-6 sm:h-8 sm:w-8 text-black" />
                 </div>
                 <CardTitle className="text-lg sm:text-xl font-bold text-sellio-text-main">AI Intent Detection</CardTitle>
                 <CardDescription className="text-sellio-primary text-sm sm:text-base">
@@ -293,7 +286,7 @@ export default function LandingPage() {
             <Card className="border-0 shadow-xl hover:shadow-2xl transition-all duration-300 group bg-white">
               <CardHeader className="pb-4">
                 <div className="h-12 w-12 sm:h-16 sm:w-16 bg-sellio-success rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Smartphone className="h-6 w-6 sm:h-8 sm:w-8 text-sellio-accent" />
+                  <Smartphone className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
                 </div>
                 <CardTitle className="text-lg sm:text-xl font-bold text-sellio-text-main">Mobile-First</CardTitle>
                 <CardDescription className="text-sellio-primary text-sm sm:text-base">
@@ -644,13 +637,13 @@ export default function LandingPage() {
               </p>
               <div className="flex space-x-4">
                 <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-neutral-dark rounded-lg flex items-center justify-center hover:bg-sellio-primary cursor-pointer">
-                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-black" />
                 </div>
                 <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-neutral-dark rounded-lg flex items-center justify-center hover:bg-sellio-primary cursor-pointer">
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-black" />
                 </div>
                 <div className="h-8 w-8 sm:h-10 sm:w-10 bg-sellio-neutral-dark rounded-lg flex items-center justify-center hover:bg-sellio-primary cursor-pointer">
-                  <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5 text-black" />
                 </div>
               </div>
             </div>
