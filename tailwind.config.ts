@@ -76,33 +76,17 @@ const config: Config = {
   				'900': '#102a43',
   				'950': '#0a1f2e'
   			},
-        // Sellio recommended palette
-        'sellio-primary': {
-          DEFAULT: '#00875A',
-        },
-        'sellio-accent': {
-          DEFAULT: '#2563EB',
-        },
-        'sellio-secondary': {
-          DEFAULT: '#F4F6FB',
-        },
-        'sellio-tertiary': {
-          DEFAULT: '#F9FAFB',
-        },
-        'sellio-text-main': {
-          DEFAULT: '#222B45',
-        },
-        'sellio-text-muted': {
-          DEFAULT: '#475569', // Blue Gray 700
-        },
-        'sellio-success': {
-          DEFAULT: '#22C55E',
-        },
-        'sellio-warning': {
-          DEFAULT: '#F59E42',
-        },
-        'sellio-danger': {
-          DEFAULT: '#EF4444',
+        // Sellio brand colors using CSS variables for theme support
+        'sellio': {
+          'primary': 'hsl(var(--sellio-primary))',
+          'accent': 'hsl(var(--sellio-accent))',
+          'secondary': 'hsl(var(--sellio-secondary))',
+          'tertiary': 'hsl(var(--sellio-tertiary))',
+          'text-main': 'hsl(var(--sellio-text-main))',
+          'text-muted': 'hsl(var(--sellio-text-muted))',
+          'success': 'hsl(var(--sellio-success))',
+          'warning': 'hsl(var(--sellio-warning))',
+          'danger': 'hsl(var(--sellio-danger))',
         },
   		}
   	},

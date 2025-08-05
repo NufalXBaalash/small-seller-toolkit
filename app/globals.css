@@ -43,40 +43,60 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Sellio brand colors - Light mode */
+    --sellio-primary: 158 64% 32%;
+    --sellio-accent: 217 91% 60%;
+    --sellio-secondary: 220 14% 96%;
+    --sellio-tertiary: 220 14% 98%;
+    --sellio-text-main: 220 26% 14%;
+    --sellio-text-muted: 220 13% 46%;
+    --sellio-success: 142 76% 36%;
+    --sellio-warning: 38 92% 50%;
+    --sellio-danger: 0 84% 60%;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
+    --background: 120 2% 10%; /* 191A19 - Very dark green */
+    --foreground: 120 8% 85%; /* D8E9A8 - Light green for text */
+    --card: 120 3% 12%; /* Slightly lighter than background */
+    --card-foreground: 120 8% 85%;
+    --popover: 120 3% 12%;
+    --popover-foreground: 120 8% 85%;
+    --primary: 120 8% 85%; /* D8E9A8 - Light green */
+    --primary-foreground: 120 2% 10%;
+    --secondary: 120 4% 15%; /* 1E5128 - Dark green */
+    --secondary-foreground: 120 8% 85%;
+    --muted: 120 4% 15%;
+    --muted-foreground: 120 6% 65%;
+    --accent: 120 4% 15%;
+    --accent-foreground: 120 8% 85%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 120 4% 15%;
+    --input: 120 4% 15%;
+    --ring: 120 8% 85%;
+    --chart-1: 120 60% 45%; /* 4E9F3D - Medium green */
+    --chart-2: 120 8% 85%; /* D8E9A8 - Light green */
+    --chart-3: 120 4% 15%; /* 1E5128 - Dark green */
+    --chart-4: 120 2% 10%; /* 191A19 - Very dark green */
+    --chart-5: 120 6% 65%; /* Muted green */
+    --sidebar-background: 120 1% 8%; /* Darker than main background for contrast */
+    --sidebar-foreground: 120 8% 85%; /* D8E9A8 - Light green */
+    --sidebar-primary: 120 60% 45%; /* 4E9F3D - Medium green */
+    --sidebar-primary-foreground: 120 1% 8%;
+    --sidebar-accent: 120 3% 11%; /* Slightly lighter than sidebar background */
+    --sidebar-accent-foreground: 120 8% 85%;
+    --sidebar-border: 120 3% 11%;
+    --sidebar-ring: 120 60% 45%;
+    /* Sellio brand colors - Dark mode with new green palette */
+    --sellio-primary: 120 60% 45%; /* 4E9F3D - Medium green */
+    --sellio-accent: 120 8% 85%; /* D8E9A8 - Light green */
+    --sellio-secondary: 120 4% 15%; /* 1E5128 - Dark green */
+    --sellio-tertiary: 120 2% 10%; /* 191A19 - Very dark green */
+    --sellio-text-main: 120 8% 85%; /* D8E9A8 - Light green */
+    --sellio-text-muted: 120 6% 65%; /* Muted green */
+    --sellio-success: 120 60% 45%; /* 4E9F3D - Medium green */
+    --sellio-warning: 38 92% 50%;
+    --sellio-danger: 0 84% 60%;
   }
 }
 

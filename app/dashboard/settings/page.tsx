@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { MessageSquare, Bell, Shield, Smartphone, Zap, Save } from "lucide-react"
+import { MessageSquare, Bell, Shield, Smartphone, Zap, Save, Palette } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function SettingsPage() {
   return (
@@ -20,6 +21,26 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6">
+        {/* Appearance Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Palette className="h-5 w-5" />
+              <span>Appearance</span>
+            </CardTitle>
+            <CardDescription>Customize the look and feel of your dashboard</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Theme</Label>
+                <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
+              </div>
+              <ThemeToggle />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Platform Integrations */}
         <Card>
           <CardHeader>
@@ -32,8 +53,8 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <MessageSquare className="h-5 w-5 text-green-600" />
+                <div className="h-10 w-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
                   <p className="font-medium">WhatsApp Business API</p>
@@ -48,8 +69,8 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-between p-4 border rounded-lg">
               <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <MessageSquare className="h-5 w-5 text-blue-600" />
+                <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
                   <p className="font-medium">Facebook Messenger</p>
@@ -239,7 +260,7 @@ export default function SettingsPage() {
 
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="text-red-600">Delete Account</Label>
+                <Label className="text-red-600 dark:text-red-400">Delete Account</Label>
                 <p className="text-sm text-muted-foreground">Permanently delete your account and all data</p>
               </div>
               <Button variant="destructive" size="sm">

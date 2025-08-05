@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchUserProducts, updateProduct, deleteProduct, testDatabaseConnection } from "@/lib/supabase"
+import { fetchUserProducts, updateProduct, deleteProduct, testDatabaseConnection, clearCache } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { Package, Search, Plus, Edit, Trash2, AlertTriangle, Loader2, Eye } from
 import { AddProductModal } from "@/components/add-product-modal"
 import { toast } from "@/components/ui/use-toast"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
+import { useDebounce } from "@/hooks/use-debounce"
 
 interface Product {
   id: string
@@ -27,6 +28,150 @@ interface Product {
   updated_at: string
 }
 
+// Memoized status color function
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "active":
+      return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+    case "inactive":
+      return "bg-gray-100 dark:bg-gray-900/20 text-gray-800 dark:text-gray-200"
+    case "discontinued":
+      return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200"
+    default:
+      return "bg-gray-100 dark:bg-gray-900/20 text-gray-800 dark:text-gray-200"
+  }
+}
+
+// Memoized stock status functions
+const getStockStatus = (stock: number) => {
+  if (stock === 0) return "Out of Stock"
+  if (stock <= 5) return "Low Stock"
+  return "In Stock"
+}
+
+const getStockStatusColor = (stock: number) => {
+  if (stock === 0) return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200"
+  if (stock <= 5) return "bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200"
+  return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
+}
+
+// Memoized product row component
+const ProductRow = React.memo(({ 
+  product, 
+  onEdit, 
+  onDelete 
+}: { 
+  product: Product
+  onEdit: (product: Product) => void
+  onDelete: (productId: string) => void
+}) => (
+  <TableRow>
+    <TableCell>
+      <div className="flex items-center space-x-3">
+        {product.image_url ? (
+          <img
+            src={product.image_url}
+            alt={product.name}
+            className="h-10 w-10 rounded-md object-cover"
+          />
+        ) : (
+          <div className="h-10 w-10 rounded-md bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <Package className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+          </div>
+        )}
+        <div>
+          <div className="font-medium">{product.name}</div>
+          {product.description && (
+            <div className="text-sm text-muted-foreground truncate max-w-[200px]">
+              {product.description}
+            </div>
+          )}
+        </div>
+      </div>
+    </TableCell>
+    <TableCell>
+      <span className="font-mono text-sm">
+        {product.sku || "N/A"}
+      </span>
+    </TableCell>
+    <TableCell>
+      {product.category ? (
+        <Badge variant="outline">{product.category}</Badge>
+      ) : (
+        <span className="text-muted-foreground">Uncategorized</span>
+      )}
+    </TableCell>
+    <TableCell>
+      <div className="flex items-center space-x-2">
+        <span className="font-medium">{product.stock}</span>
+        <Badge className={getStockStatusColor(product.stock)}>
+          {getStockStatus(product.stock)}
+        </Badge>
+      </div>
+    </TableCell>
+    <TableCell>
+      {product.price ? (
+        <span className="font-medium">${product.price.toFixed(2)}</span>
+      ) : (
+        <span className="text-muted-foreground">Not set</span>
+      )}
+    </TableCell>
+    <TableCell>
+      <Badge className={getStatusColor(product.status)}>
+        {product.status}
+      </Badge>
+    </TableCell>
+    <TableCell className="text-right">
+      <div className="flex items-center justify-end space-x-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onEdit(product)}
+        >
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onDelete(product.id)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </TableCell>
+  </TableRow>
+))
+
+ProductRow.displayName = "ProductRow"
+
+// Memoized stats card component
+const StatsCard = React.memo(({ 
+  title, 
+  value, 
+  subtitle, 
+  icon: Icon,
+  color = "text-muted-foreground"
+}: { 
+  title: string
+  value: string | number
+  subtitle: string
+  icon: React.ComponentType<{ className?: string }>
+  color?: string
+}) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className={`h-4 w-4 ${color}`} />
+    </CardHeader>
+    <CardContent>
+      <div className={`text-2xl font-bold ${color}`}>{value}</div>
+      <p className="text-xs text-muted-foreground">{subtitle}</p>
+    </CardContent>
+  </Card>
+))
+
+StatsCard.displayName = "StatsCard"
+
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,7 +181,10 @@ export default function InventoryPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const { user } = useAuth()
 
-  const fetchProducts = async () => {
+  // Debounce search term to reduce filtering operations
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+
+  const fetchProducts = useCallback(async () => {
     if (!user?.id) return
 
     try {
@@ -60,7 +208,7 @@ export default function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [user?.id])
 
   // Use the visibility hook to refetch data when page becomes visible
   useRefetchOnVisibility(fetchProducts)
@@ -72,12 +220,14 @@ export default function InventoryPage() {
     } else {
       console.log("User not authenticated or no user ID")
     }
-  }, [user?.id])
+  }, [user?.id, fetchProducts])
 
-  const handleProductUpdate = async (productId: string, updates: Partial<Product>) => {
+  const handleProductUpdate = useCallback(async (productId: string, updates: Partial<Product>) => {
     try {
       await updateProduct(productId, updates)
-      await fetchProducts() // Refresh the list
+      // Clear cache and refresh the list
+      clearCache("products")
+      await fetchProducts()
       toast({
         title: "Product updated",
         description: "Product has been updated successfully.",
@@ -90,14 +240,16 @@ export default function InventoryPage() {
         variant: "destructive",
       })
     }
-  }
+  }, [fetchProducts])
 
-  const handleProductDelete = async (productId: string) => {
+  const handleProductDelete = useCallback(async (productId: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return
 
     try {
       await deleteProduct(productId)
-      await fetchProducts() // Refresh the list
+      // Clear cache and refresh the list
+      clearCache("products")
+      await fetchProducts()
       toast({
         title: "Product deleted",
         description: "Product has been deleted successfully.",
@@ -110,46 +262,55 @@ export default function InventoryPage() {
         variant: "destructive",
       })
     }
-  }
+  }, [fetchProducts])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800"
-      case "inactive":
-        return "bg-gray-100 text-gray-800"
-      case "discontinued":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
-    }
-  }
-
-  const getStockStatus = (stock: number) => {
-    if (stock === 0) return "Out of Stock"
-    if (stock <= 5) return "Low Stock"
-    return "In Stock"
-  }
-
-  const getStockStatusColor = (stock: number) => {
-    if (stock === 0) return "bg-red-100 text-red-800"
-    if (stock <= 5) return "bg-orange-100 text-orange-800"
-    return "bg-green-100 text-green-800"
-  }
-
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Memoized filtered products
+  const filteredProducts = useMemo(() => 
+    products.filter(product =>
+      product.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      product.sku?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      product.category?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+    ), [products, debouncedSearchTerm]
   )
 
-  const stats = {
+  // Memoized stats
+  const stats = useMemo(() => ({
     total: products.length,
     active: products.filter(p => p.status === "active").length,
     lowStock: products.filter(p => p.stock <= 5 && p.stock > 0).length,
     outOfStock: products.filter(p => p.stock === 0).length,
     totalValue: products.reduce((sum, p) => sum + ((p.price || 0) * (p.stock || 0)), 0)
-  }
+  }), [products])
+
+  // Memoized stats cards data
+  const statsCards = useMemo(() => [
+    {
+      title: "Total Products",
+      value: stats.total,
+      subtitle: `${stats.active} active products`,
+      icon: Package,
+    },
+    {
+      title: "Low Stock",
+      value: stats.lowStock,
+      subtitle: "Products with ≤5 units",
+      icon: AlertTriangle,
+      color: "text-orange-500",
+    },
+    {
+      title: "Out of Stock",
+      value: stats.outOfStock,
+      subtitle: "Products with 0 units",
+      icon: AlertTriangle,
+      color: "text-red-500",
+    },
+    {
+      title: "Total Value",
+      value: `$${stats.totalValue.toFixed(2)}`,
+      subtitle: "At current prices",
+      icon: Package,
+    },
+  ], [stats])
 
   if (loading) {
     return (
@@ -190,59 +351,9 @@ export default function InventoryPage() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Products</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.active} active products
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{stats.lowStock}</div>
-            <p className="text-xs text-muted-foreground">
-              Products with ≤5 units
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Out of Stock</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.outOfStock}</div>
-            <p className="text-xs text-muted-foreground">
-              Products with 0 units
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${stats.totalValue.toFixed(2)}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              At current prices
-            </p>
-          </CardContent>
-        </Card>
+        {statsCards.map((card) => (
+          <StatsCard key={card.title} {...card} />
+        ))}
       </div>
 
       {/* Search and Filters */}
@@ -283,86 +394,17 @@ export default function InventoryPage() {
                 {filteredProducts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8">
-                      {searchTerm ? "No products found matching your search." : "No products yet. Add your first product to get started."}
+                      {debouncedSearchTerm ? "No products found matching your search." : "No products yet. Add your first product to get started."}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredProducts.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          {product.image_url ? (
-                            <img
-                              src={product.image_url}
-                              alt={product.name}
-                              className="h-10 w-10 rounded-md object-cover"
-                            />
-                          ) : (
-                            <div className="h-10 w-10 rounded-md bg-gray-100 flex items-center justify-center">
-                              <Package className="h-5 w-5 text-gray-400" />
-                            </div>
-                          )}
-                          <div>
-                            <div className="font-medium">{product.name}</div>
-                            {product.description && (
-                              <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                                {product.description}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-mono text-sm">
-                          {product.sku || "N/A"}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {product.category ? (
-                          <Badge variant="outline">{product.category}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">Uncategorized</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-medium">{product.stock}</span>
-                          <Badge className={getStockStatusColor(product.stock)}>
-                            {getStockStatus(product.stock)}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {product.price ? (
-                          <span className="font-medium">${product.price.toFixed(2)}</span>
-                        ) : (
-                          <span className="text-muted-foreground">Not set</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(product.status)}>
-                          {product.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingProduct(product)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleProductDelete(product.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <ProductRow 
+                      key={product.id} 
+                      product={product}
+                      onEdit={setEditingProduct}
+                      onDelete={handleProductDelete}
+                    />
                   ))
                 )}
               </TableBody>

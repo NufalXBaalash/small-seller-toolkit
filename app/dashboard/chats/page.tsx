@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchUserChats, fetchChatMessages } from "@/lib/supabase"
+import { fetchUserChats, fetchChatMessages, clearCache } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Search, Filter, MoreHorizontal, Phone, Video, Send, Paperclip, Smile, Loader2 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
+import { useDebounce } from "@/hooks/use-debounce"
 
 interface Chat {
   id: string
@@ -37,6 +38,149 @@ interface Message {
   created_at: string
 }
 
+// Memoized status color function
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "inquiry":
+      return "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 border-blue-200 dark:border-blue-800"
+    case "order":
+      return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800"
+    case "support":
+      return "bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200 border-orange-200 dark:border-orange-800"
+    case "completed":
+      return "bg-gray-100 dark:bg-gray-900/20 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-800"
+    default:
+      return "bg-gray-100 dark:bg-gray-900/20 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-800"
+  }
+}
+
+// Memoized time ago function
+const getTimeAgo = (dateString: string) => {
+  try {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+
+    if (diffInMinutes < 0) return "Just now"
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+    return `${Math.floor(diffInMinutes / 1440)}d ago`
+  } catch {
+    return "Unknown"
+  }
+}
+
+// Memoized chat item component
+const ChatItem = React.memo(({ 
+  chat, 
+  isSelected, 
+  onSelect 
+}: { 
+  chat: Chat
+  isSelected: boolean
+  onSelect: (chat: Chat) => void
+}) => (
+  <div
+    className={`flex items-center space-x-3 p-3 sm:p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all ${
+      isSelected ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' : ''
+    }`}
+    onClick={() => onSelect(chat)}
+  >
+    <div className="relative flex-shrink-0">
+      <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
+        <AvatarImage
+          src={`/placeholder.svg?height=48&width=48&text=${chat.customers.name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")}`}
+        />
+        <AvatarFallback className="bg-gradient-to-br from-navy-500 to-navy-600 text-white font-semibold text-xs sm:text-sm">
+          {chat.customers.name
+            .split(" ")
+            .map((n) => n[0])
+            .join("")}
+        </AvatarFallback>
+      </Avatar>
+      {chat.status === "active" && (
+        <div className="absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 bg-green-500 border-2 border-white rounded-full"></div>
+      )}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center justify-between mb-1">
+        <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">{chat.customers.name}</p>
+        <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+          {chat.unread_count > 0 && (
+            <Badge
+              variant="destructive"
+              className="text-xs h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center"
+            >
+              {chat.unread_count}
+            </Badge>
+          )}
+          <span className="text-xs text-gray-500">{getTimeAgo(chat.updated_at)}</span>
+        </div>
+      </div>
+      <p className="text-xs sm:text-sm text-sellio-primary truncate mb-2">
+        {chat.last_message || "No messages yet"}
+      </p>
+      <div className="flex items-center justify-between">
+        <Badge variant="outline" className="text-xs border">
+          {chat.platform}
+        </Badge>
+        <Badge className={`text-xs ${getStatusColor(chat.status)}`}>
+          {chat.status.charAt(0).toUpperCase() + chat.status.slice(1)}
+        </Badge>
+      </div>
+    </div>
+  </div>
+))
+
+ChatItem.displayName = "ChatItem"
+
+// Memoized message component
+const MessageItem = React.memo(({ message }: { message: Message }) => (
+  <div className={`flex ${message.sender_type === 'business' ? 'justify-end' : 'justify-start'}`}>
+    <div className={`rounded-2xl p-3 sm:p-4 max-w-xs shadow-sm ${
+      message.sender_type === 'business' 
+        ? 'bg-gradient-to-r from-navy-600 to-navy-700 text-white rounded-br-md' 
+        : 'bg-gray-100 rounded-bl-md'
+    }`}>
+      <p className="text-xs sm:text-sm">{message.content}</p>
+      <div className="flex items-center justify-between mt-2">
+        <span className="text-xs text-gray-500">
+          {getTimeAgo(message.created_at)}
+        </span>
+        {message.sender_type === 'auto' && (
+          <Badge variant="secondary" className="text-xs bg-white/20 text-white border-white/30">
+            Auto-Reply
+          </Badge>
+        )}
+      </div>
+    </div>
+  </div>
+))
+
+MessageItem.displayName = "MessageItem"
+
+// Memoized quick reply button component
+const QuickReplyButton = React.memo(({ 
+  text, 
+  color = "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" 
+}: { 
+  text: string
+  color?: string
+}) => (
+  <Button
+    size="sm"
+    variant="outline"
+    className={`${color} text-xs sm:text-sm`}
+  >
+    {text}
+  </Button>
+))
+
+QuickReplyButton.displayName = "QuickReplyButton"
+
 export default function ChatsPage() {
   const [chats, setChats] = useState<Chat[]>([])
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
@@ -47,7 +191,10 @@ export default function ChatsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const { user } = useAuth()
 
-  const fetchChats = async () => {
+  // Debounce search term to reduce filtering operations
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+
+  const fetchChats = useCallback(async () => {
     if (!user?.id) return
 
     try {
@@ -68,7 +215,7 @@ export default function ChatsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user?.id])
 
   // Use the visibility hook to refetch data when page becomes visible
   useRefetchOnVisibility(fetchChats)
@@ -77,9 +224,9 @@ export default function ChatsPage() {
     if (user?.id) {
       fetchChats()
     }
-  }, [user?.id])
+  }, [user?.id, fetchChats])
 
-  const fetchMessages = async (chatId: string) => {
+  const fetchMessages = useCallback(async (chatId: string) => {
     try {
       const data = await fetchChatMessages(chatId)
       setMessages(data)
@@ -91,9 +238,9 @@ export default function ChatsPage() {
         variant: "destructive",
       })
     }
-  }
+  }, [])
 
-  const sendMessage = async () => {
+  const sendMessage = useCallback(async () => {
     if (!newMessage.trim() || !selectedChat || isSending) return
 
     setIsSending(true)
@@ -116,7 +263,9 @@ export default function ChatsPage() {
 
       setNewMessage("")
       await fetchMessages(selectedChat.id)
-      await fetchChats() // Refresh chat list
+      // Clear cache and refresh chat list
+      clearCache("chats")
+      await fetchChats()
     } catch (error) {
       console.error("Error sending message:", error)
       toast({
@@ -127,43 +276,24 @@ export default function ChatsPage() {
     } finally {
       setIsSending(false)
     }
-  }
+  }, [newMessage, selectedChat, isSending, user?.id, fetchMessages, fetchChats])
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "inquiry":
-        return "bg-blue-100 text-blue-800 border-blue-200"
-      case "order":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "support":
-        return "bg-orange-100 text-orange-800 border-orange-200"
-      case "completed":
-        return "bg-gray-100 text-gray-800 border-gray-200"
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
-    }
-  }
-
-  const getTimeAgo = (dateString: string) => {
-    try {
-      const date = new Date(dateString)
-      const now = new Date()
-      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-
-      if (diffInMinutes < 0) return "Just now"
-      if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
-      return `${Math.floor(diffInMinutes / 1440)}d ago`
-    } catch {
-      return "Unknown"
-    }
-  }
-
-  const filteredChats = chats.filter(chat =>
-    chat.customers.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    chat.platform.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    chat.last_message?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Memoized filtered chats
+  const filteredChats = useMemo(() => 
+    chats.filter(chat =>
+      chat.customers.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      chat.platform.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      chat.last_message?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+    ), [chats, debouncedSearchTerm]
   )
+
+  // Memoized quick reply buttons
+  const quickReplyButtons = useMemo(() => [
+    { text: "Price: $25", color: "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100" },
+    { text: "In Stock", color: "bg-green-50 text-green-700 border-green-200 hover:bg-green-100" },
+    { text: "Delivery: 2-3 days", color: "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100" },
+    { text: "Payment Options", color: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100" },
+  ], [])
 
   if (isLoading) {
     return (
@@ -217,67 +347,19 @@ export default function ChatsPage() {
           <CardContent className="space-y-2 sm:space-y-3 max-h-96 sm:max-h-none overflow-y-auto">
             {filteredChats.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {searchTerm ? "No chats found matching your search." : "No chats yet. Start a conversation to see them here."}
+                {debouncedSearchTerm ? "No chats found matching your search." : "No chats yet. Start a conversation to see them here."}
               </div>
             ) : (
               filteredChats.map((chat) => (
-                <div
-                  key={chat.id}
-                  className={`flex items-center space-x-3 p-3 sm:p-4 rounded-xl hover:bg-gray-50 cursor-pointer border border-transparent hover:border-gray-200 transition-all ${
-                    selectedChat?.id === chat.id ? 'bg-gray-50 border-gray-200' : ''
-                  }`}
-                  onClick={() => {
+                <ChatItem 
+                  key={chat.id} 
+                  chat={chat}
+                  isSelected={selectedChat?.id === chat.id}
+                  onSelect={(chat) => {
                     setSelectedChat(chat)
                     fetchMessages(chat.id)
                   }}
-                >
-                  <div className="relative flex-shrink-0">
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
-                      <AvatarImage
-                        src={`/placeholder.svg?height=48&width=48&text=${chat.customers.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}`}
-                      />
-                      <AvatarFallback className="bg-gradient-to-br from-navy-500 to-navy-600 text-white font-semibold text-xs sm:text-sm">
-                        {chat.customers.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    {chat.status === "active" && (
-                      <div className="absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 bg-green-500 border-2 border-white rounded-full"></div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">{chat.customers.name}</p>
-                      <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-                        {chat.unread_count > 0 && (
-                          <Badge
-                            variant="destructive"
-                            className="text-xs h-4 w-4 sm:h-5 sm:w-5 rounded-full p-0 flex items-center justify-center"
-                          >
-                            {chat.unread_count}
-                          </Badge>
-                        )}
-                        <span className="text-xs text-gray-500">{getTimeAgo(chat.updated_at)}</span>
-                      </div>
-                    </div>
-                    <p className="text-xs sm:text-sm text-sellio-primary truncate mb-2">
-                      {chat.last_message || "No messages yet"}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline" className="text-xs border">
-                        {chat.platform}
-                      </Badge>
-                      <Badge className={`text-xs ${getStatusColor(chat.status)}`}>
-                        {chat.status.charAt(0).toUpperCase() + chat.status.slice(1)}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
+                />
               ))
             )}
           </CardContent>
@@ -332,25 +414,7 @@ export default function ChatsPage() {
                 </div>
               ) : (
                 messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.sender_type === 'business' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`rounded-2xl p-3 sm:p-4 max-w-xs shadow-sm ${
-                      message.sender_type === 'business' 
-                        ? 'bg-gradient-to-r from-navy-600 to-navy-700 text-white rounded-br-md' 
-                        : 'bg-gray-100 rounded-bl-md'
-                    }`}>
-                      <p className="text-xs sm:text-sm">{message.content}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-gray-500">
-                          {getTimeAgo(message.created_at)}
-                        </span>
-                        {message.sender_type === 'auto' && (
-                          <Badge variant="secondary" className="text-xs bg-white/20 text-white border-white/30">
-                            Auto-Reply
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                  <MessageItem key={message.id} message={message} />
                 ))
               )}
             </div>
@@ -358,34 +422,9 @@ export default function ChatsPage() {
             {/* Message Input */}
             <div className="border-t bg-gray-50 p-3 sm:p-4">
               <div className="flex flex-wrap items-center gap-2 mb-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 text-xs sm:text-sm"
-                >
-                  Price: $25
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 text-xs sm:text-sm"
-                >
-                  In Stock
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100 text-xs sm:text-sm"
-                >
-                  Delivery: 2-3 days
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 text-xs sm:text-sm"
-                >
-                  Payment Options
-                </Button>
+                {quickReplyButtons.map((button) => (
+                  <QuickReplyButton key={button.text} {...button} />
+                ))}
               </div>
 
               <div className="flex items-center space-x-2 sm:space-x-3">

@@ -9,6 +9,23 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Performance optimizations
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+  // Compression
+  compress: true,
+  // Bundle analyzer (optional - uncomment to analyze bundle size)
+  // webpack: (config, { isServer }) => {
+  //   if (!isServer) {
+  //     config.resolve.fallback = {
+  //       ...config.resolve.fallback,
+  //       fs: false,
+  //     };
+  //   }
+  //   return config;
+  // },
 }
 
 export default nextConfig

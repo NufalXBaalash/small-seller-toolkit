@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -39,6 +39,81 @@ interface AddProductModalProps {
   onProductUpdated?: () => void
   onClose?: () => void
 }
+
+// Memoized form field component
+const FormField = React.memo(({ 
+  label, 
+  id, 
+  type = "text", 
+  value, 
+  onChange, 
+  placeholder, 
+  required = false,
+  min,
+  step
+}: {
+  label: string
+  id: string
+  type?: string
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  required?: boolean
+  min?: string
+  step?: string
+}) => (
+  <div className="grid grid-cols-4 items-center gap-4">
+    <Label htmlFor={id} className="text-right">
+      {label} {required && "*"}
+    </Label>
+    <Input
+      id={id}
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="col-span-3"
+      placeholder={placeholder}
+      required={required}
+      min={min}
+      step={step}
+    />
+  </div>
+))
+
+FormField.displayName = "FormField"
+
+// Memoized textarea field component
+const TextareaField = React.memo(({ 
+  label, 
+  id, 
+  value, 
+  onChange, 
+  placeholder, 
+  rows = 3
+}: {
+  label: string
+  id: string
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  rows?: number
+}) => (
+  <div className="grid grid-cols-4 items-center gap-4">
+    <Label htmlFor={id} className="text-right">
+      {label}
+    </Label>
+    <Textarea
+      id={id}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="col-span-3"
+      placeholder={placeholder}
+      rows={rows}
+    />
+  </div>
+))
+
+TextareaField.displayName = "TextareaField"
 
 export function AddProductModal({ 
   open, 
@@ -85,7 +160,14 @@ export function AddProductModal({
     }
   }, [editingProduct])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleInputChange = useCallback((field: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }, [])
+
+  const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!formData.name.trim() || !formData.stock.trim()) {
@@ -203,21 +285,14 @@ export function AddProductModal({
     } finally {
       setLoading(false)
     }
-  }
+  }, [formData, editingProduct, onOpenChange, onProductAdded, onProductUpdated, onClose])
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     onOpenChange(false)
     if (onClose) {
       onClose()
     }
-  }
+  }, [onOpenChange, onClose])
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -235,99 +310,62 @@ export function AddProductModal({
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name *
-              </Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
-                className="col-span-3"
-                placeholder="Product name"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="sku" className="text-right">
-                SKU
-              </Label>
-              <Input
-                id="sku"
-                value={formData.sku}
-                onChange={(e) => handleInputChange("sku", e.target.value)}
-                className="col-span-3"
-                placeholder="Stock keeping unit"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category" className="text-right">
-                Category
-              </Label>
-              <Input
-                id="category"
-                value={formData.category}
-                onChange={(e) => handleInputChange("category", e.target.value)}
-                className="col-span-3"
-                placeholder="Product category"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="stock" className="text-right">
-                Stock *
-              </Label>
-              <Input
-                id="stock"
-                type="number"
-                min="0"
-                value={formData.stock}
-                onChange={(e) => handleInputChange("stock", e.target.value)}
-                className="col-span-3"
-                placeholder="0"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="price" className="text-right">
-                Price
-              </Label>
-              <Input
-                id="price"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.price}
-                onChange={(e) => handleInputChange("price", e.target.value)}
-                className="col-span-3"
-                placeholder="0.00"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => handleInputChange("description", e.target.value)}
-                className="col-span-3"
-                placeholder="Product description"
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="image_url" className="text-right">
-                Image URL
-              </Label>
-              <Input
-                id="image_url"
-                type="url"
-                value={formData.image_url}
-                onChange={(e) => handleInputChange("image_url", e.target.value)}
-                className="col-span-3"
-                placeholder="https://example.com/image.jpg"
-              />
-            </div>
+            <FormField
+              label="Name"
+              id="name"
+              value={formData.name}
+              onChange={(value) => handleInputChange("name", value)}
+              placeholder="Product name"
+              required
+            />
+            <FormField
+              label="SKU"
+              id="sku"
+              value={formData.sku}
+              onChange={(value) => handleInputChange("sku", value)}
+              placeholder="Stock keeping unit"
+            />
+            <FormField
+              label="Category"
+              id="category"
+              value={formData.category}
+              onChange={(value) => handleInputChange("category", value)}
+              placeholder="Product category"
+            />
+            <FormField
+              label="Stock"
+              id="stock"
+              type="number"
+              value={formData.stock}
+              onChange={(value) => handleInputChange("stock", value)}
+              placeholder="0"
+              required
+              min="0"
+            />
+            <FormField
+              label="Price"
+              id="price"
+              type="number"
+              value={formData.price}
+              onChange={(value) => handleInputChange("price", value)}
+              placeholder="0.00"
+              step="0.01"
+            />
+            <TextareaField
+              label="Description"
+              id="description"
+              value={formData.description}
+              onChange={(value) => handleInputChange("description", value)}
+              placeholder="Product description"
+            />
+            <FormField
+              label="Image URL"
+              id="image_url"
+              type="url"
+              value={formData.image_url}
+              onChange={(value) => handleInputChange("image_url", value)}
+              placeholder="https://example.com/image.jpg"
+            />
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>

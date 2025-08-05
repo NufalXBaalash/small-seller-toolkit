@@ -72,32 +72,32 @@ export default function OrdersPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200"
       case "confirmed":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200"
       case "shipped":
-        return "bg-purple-100 text-purple-800"
+        return "bg-purple-100 dark:bg-purple-900/20 text-purple-800 dark:text-purple-200"
       case "delivered":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
       case "cancelled":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 dark:bg-gray-900/20 text-gray-800 dark:text-gray-200"
     }
   }
 
   const getPaymentStatusColor = (status: string) => {
     switch (status) {
       case "pending":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200"
       case "paid":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200"
       case "failed":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200"
       case "refunded":
-        return "bg-orange-100 text-orange-800"
+        return "bg-orange-100 dark:bg-orange-900/20 text-orange-800 dark:text-orange-200"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 dark:bg-gray-900/20 text-gray-800 dark:text-gray-200"
     }
   }
 
@@ -142,9 +142,9 @@ export default function OrdersPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <ShoppingCart className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Orders</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <ShoppingCart className="h-12 w-12 text-red-500 dark:text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error Loading Orders</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <Button onClick={fetchOrders}>Try Again</Button>
         </div>
       </div>

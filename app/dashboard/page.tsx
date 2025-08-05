@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -40,39 +40,136 @@ interface DashboardStats {
   }>
 }
 
+// Memoized time ago function
+const getTimeAgo = (dateString: string) => {
+  try {
+    const date = new Date(dateString)
+    const now = new Date()
+    
+    // Validate date
+    if (isNaN(date.getTime())) {
+      return "Unknown"
+    }
+    
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+
+    if (diffInMinutes < 0) {
+      return "Just now"
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes}m ago`
+    } else if (diffInMinutes < 1440) {
+      return `${Math.floor(diffInMinutes / 60)}h ago`
+    } else {
+      return `${Math.floor(diffInMinutes / 1440)}d ago`
+    }
+  } catch (err) {
+    console.error("Error calculating time ago:", err)
+    return "Unknown"
+  }
+}
+
+// Memoized activity icon component
+const ActivityIcon = React.memo(({ type, status }: { type: string; status: string }) => {
+  switch (type) {
+    case "order":
+      return <ShoppingCart className="h-4 w-4" />
+    case "message":
+      return <MessageSquare className="h-4 w-4" />
+    case "alert":
+      return <AlertCircle className="h-4 w-4" />
+    default:
+      return <CheckCircle className="h-4 w-4" />
+  }
+})
+
+ActivityIcon.displayName = "ActivityIcon"
+
+// Memoized activity background color function
+const getActivityBgColor = (type: string) => {
+  switch (type) {
+    case "order":
+      return "bg-blue-50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400"
+    case "message":
+      return "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400"
+    case "alert":
+      return "bg-orange-50 dark:bg-orange-950/20 text-orange-700 dark:text-orange-400"
+    default:
+      return "bg-gray-50 dark:bg-gray-950/20 text-gray-700 dark:text-gray-400"
+  }
+}
+
+// Memoized stats cards component
+const StatsCard = React.memo(({ 
+  title, 
+  value, 
+  subtitle, 
+  icon: Icon 
+}: { 
+  title: string
+  value: string | number
+  subtitle: string
+  icon: React.ComponentType<{ className?: string }>
+}) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+      <p className="text-xs text-muted-foreground">{subtitle}</p>
+    </CardContent>
+  </Card>
+))
+
+StatsCard.displayName = "StatsCard"
+
+// Memoized activity item component
+const ActivityItem = React.memo(({ activity }: { activity: DashboardStats['recentActivity'][0] }) => (
+  <div className="flex items-center space-x-4">
+    <div className={`p-2 rounded-full ${getActivityBgColor(activity.type)}`}>
+      <ActivityIcon type={activity.type} status={activity.status} />
+    </div>
+    <div className="flex-1 space-y-1">
+      <p className="text-sm font-medium leading-none">
+        {activity.title}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {activity.description}
+      </p>
+    </div>
+    <div className="text-sm text-muted-foreground">
+      {activity.time}
+    </div>
+  </div>
+))
+
+ActivityItem.displayName = "ActivityItem"
+
+// Memoized quick action button component
+const QuickActionButton = React.memo(({ 
+  icon: Icon, 
+  children, 
+  variant = "outline" 
+}: { 
+  icon: React.ComponentType<{ className?: string }>
+  children: React.ReactNode
+  variant?: "outline" | "default"
+}) => (
+  <Button className="w-full justify-start" variant={variant}>
+    <Icon className="h-4 w-4 mr-2" />
+    {children}
+  </Button>
+))
+
+QuickActionButton.displayName = "QuickActionButton"
+
 export default function Dashboard() {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user, userProfile } = useAuth()
-
-  const getTimeAgo = useCallback((dateString: string) => {
-    try {
-      const date = new Date(dateString)
-      const now = new Date()
-      
-      // Validate date
-      if (isNaN(date.getTime())) {
-        return "Unknown"
-      }
-      
-      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-
-      if (diffInMinutes < 0) {
-        return "Just now"
-      } else if (diffInMinutes < 60) {
-        return `${diffInMinutes}m ago`
-      } else if (diffInMinutes < 1440) {
-        return `${Math.floor(diffInMinutes / 60)}h ago`
-      } else {
-        return `${Math.floor(diffInMinutes / 1440)}d ago`
-      }
-    } catch (err) {
-      console.error("Error calculating time ago:", err)
-      return "Unknown"
-    }
-  }, [])
 
   const fetchDashboardData = useCallback(async () => {
     if (!user?.id) {
@@ -175,7 +272,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }, [user?.id, getTimeAgo])
+  }, [user?.id])
 
   // Use the visibility hook to refetch data when page becomes visible
   useRefetchOnVisibility(fetchDashboardData)
@@ -184,31 +281,42 @@ export default function Dashboard() {
     fetchDashboardData()
   }, [fetchDashboardData])
 
-  const getActivityIcon = (type: string, status: string) => {
-    switch (type) {
-      case "order":
-        return <ShoppingCart className="h-4 w-4" />
-      case "message":
-        return <MessageSquare className="h-4 w-4" />
-      case "alert":
-        return <AlertCircle className="h-4 w-4" />
-      default:
-        return <CheckCircle className="h-4 w-4" />
-    }
-  }
+  // Memoized stats cards data
+  const statsCards = useMemo(() => [
+    {
+      title: "Total Revenue",
+      value: `$${stats?.totalRevenue.toFixed(2) || "0.00"}`,
+      subtitle: "+20.1% from last month",
+      icon: DollarSign,
+    },
+    {
+      title: "Total Orders",
+      value: stats?.totalOrders || 0,
+      subtitle: "+180.1% from last month",
+      icon: ShoppingCart,
+    },
+    {
+      title: "Active Chats",
+      value: stats?.activeChats || 0,
+      subtitle: "+19% from last month",
+      icon: MessageSquare,
+    },
+    {
+      title: "Total Customers",
+      value: stats?.totalCustomers || 0,
+      subtitle: "+201 since last month",
+      icon: Users,
+    },
+  ], [stats])
 
-  const getActivityBgColor = (type: string) => {
-    switch (type) {
-      case "order":
-        return "bg-blue-50 text-blue-700"
-      case "message":
-        return "bg-green-50 text-green-700"
-      case "alert":
-        return "bg-orange-50 text-orange-700"
-      default:
-        return "bg-gray-50 text-gray-700"
-    }
-  }
+  // Memoized quick actions
+  const quickActions = useMemo(() => [
+    { icon: Plus, children: "Add Product" },
+    { icon: Users, children: "Add Customer" },
+    { icon: ShoppingCart, children: "Create Order" },
+    { icon: MessageSquare, children: "View Messages" },
+    { icon: TrendingUp, children: "View Analytics" },
+  ], [])
 
   if (loading) {
     return (
@@ -222,9 +330,9 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Dashboard</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error Loading Dashboard</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <Button onClick={fetchDashboardData}>Try Again</Button>
         </div>
       </div>
@@ -255,59 +363,9 @@ export default function Dashboard() {
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${stats?.totalRevenue.toFixed(2) || "0.00"}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              +20.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalOrders || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              +180.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Chats</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeChats || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              +19% from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalCustomers || 0}</div>
-            <p className="text-xs text-muted-foreground">
-              +201 since last month
-            </p>
-          </CardContent>
-        </Card>
+        {statsCards.map((card) => (
+          <StatsCard key={card.title} {...card} />
+        ))}
       </div>
 
       {/* Recent Activity */}
@@ -322,22 +380,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {stats?.recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-center space-x-4">
-                  <div className={`p-2 rounded-full ${getActivityBgColor(activity.type)}`}>
-                    {getActivityIcon(activity.type, activity.status)}
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {activity.title}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {activity.description}
-                    </p>
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {activity.time}
-                  </div>
-                </div>
+                <ActivityItem key={activity.id} activity={activity} />
               ))}
               {(!stats?.recentActivity || stats.recentActivity.length === 0) && (
                 <div className="text-center py-8 text-muted-foreground">
@@ -356,26 +399,9 @@ export default function Dashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full justify-start" variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Product
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <Users className="h-4 w-4 mr-2" />
-              Add Customer
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Create Order
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <MessageSquare className="h-4 w-4 mr-2" />
-              View Messages
-            </Button>
-            <Button className="w-full justify-start" variant="outline">
-              <TrendingUp className="h-4 w-4 mr-2" />
-              View Analytics
-            </Button>
+            {quickActions.map((action) => (
+              <QuickActionButton key={action.children} {...action} />
+            ))}
           </CardContent>
         </Card>
       </div>

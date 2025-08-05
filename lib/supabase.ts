@@ -5,8 +5,30 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Dashboard data fetching utilities
+// Simple in-memory cache for API responses
+const cache = new Map<string, { data: any; timestamp: number }>()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
+const getCachedData = (key: string) => {
+  const cached = cache.get(key)
+  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+    return cached.data
+  }
+  return null
+}
+
+const setCachedData = (key: string, data: any) => {
+  cache.set(key, { data, timestamp: Date.now() })
+}
+
+// Dashboard data fetching utilities with caching
 export const fetchUserDashboardData = async (userId: string) => {
+  const cacheKey = `dashboard-${userId}`
+  const cached = getCachedData(cacheKey)
+  if (cached) {
+    return cached
+  }
+
   try {
     const [orders, chats, customers, products, dailyStats] = await Promise.all([
       supabase
@@ -43,7 +65,7 @@ export const fetchUserDashboardData = async (userId: string) => {
         .order("date", { ascending: false })
     ])
 
-    return {
+    const result = {
       orders: orders.data || [],
       chats: chats.data || [],
       customers: customers.data || [],
@@ -57,6 +79,9 @@ export const fetchUserDashboardData = async (userId: string) => {
         dailyStats: dailyStats.error
       }
     }
+
+    setCachedData(cacheKey, result)
+    return result
   } catch (error) {
     console.error("Error fetching dashboard data:", error)
     throw error
@@ -64,6 +89,12 @@ export const fetchUserDashboardData = async (userId: string) => {
 }
 
 export const fetchUserCustomers = async (userId: string): Promise<Customer[]> => {
+  const cacheKey = `customers-${userId}`
+  const cached = getCachedData(cacheKey)
+  if (cached) {
+    return cached
+  }
+
   try {
     const { data, error } = await supabase
       .from("customers")
@@ -72,7 +103,10 @@ export const fetchUserCustomers = async (userId: string): Promise<Customer[]> =>
       .order("created_at", { ascending: false })
 
     if (error) throw error
-    return data || []
+    
+    const result = data || []
+    setCachedData(cacheKey, result)
+    return result
   } catch (error) {
     console.error("Error fetching customers:", error)
     throw error
@@ -80,6 +114,12 @@ export const fetchUserCustomers = async (userId: string): Promise<Customer[]> =>
 }
 
 export const fetchUserProducts = async (userId: string): Promise<Product[]> => {
+  const cacheKey = `products-${userId}`
+  const cached = getCachedData(cacheKey)
+  if (cached) {
+    return cached
+  }
+
   try {
     console.log("Fetching products for user:", userId)
     
@@ -95,7 +135,9 @@ export const fetchUserProducts = async (userId: string): Promise<Product[]> => {
     }
     
     console.log("Products fetched successfully:", data?.length || 0, "products")
-    return data || []
+    const result = data || []
+    setCachedData(cacheKey, result)
+    return result
   } catch (error) {
     console.error("Error fetching products:", error)
     if (error instanceof Error) {
@@ -106,6 +148,12 @@ export const fetchUserProducts = async (userId: string): Promise<Product[]> => {
 }
 
 export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
+  const cacheKey = `orders-${userId}`
+  const cached = getCachedData(cacheKey)
+  if (cached) {
+    return cached
+  }
+
   try {
     const { data, error } = await supabase
       .from("orders")
@@ -114,7 +162,10 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
       .order("created_at", { ascending: false })
 
     if (error) throw error
-    return data || []
+    
+    const result = data || []
+    setCachedData(cacheKey, result)
+    return result
   } catch (error) {
     console.error("Error fetching orders:", error)
     throw error
@@ -128,6 +179,12 @@ export const fetchUserAnalytics = async (userId: string): Promise<{
   productStats: any[],
   errors: any
 }> => {
+  const cacheKey = `analytics-${userId}`
+  const cached = getCachedData(cacheKey)
+  if (cached) {
+    return cached
+  }
+
   try {
     const [orders, customers, dailyStats, productStats] = await Promise.all([
       supabase
@@ -154,7 +211,7 @@ export const fetchUserAnalytics = async (userId: string): Promise<{
         .order("created_at", { ascending: false })
     ])
 
-    return {
+    const result = {
       orders: orders.data || [],
       customers: customers.data || [],
       dailyStats: dailyStats.data || [],
@@ -166,6 +223,9 @@ export const fetchUserAnalytics = async (userId: string): Promise<{
         productStats: productStats.error
       }
     }
+
+    setCachedData(cacheKey, result)
+    return result
   } catch (error) {
     console.error("Error fetching analytics:", error)
     throw error
@@ -173,6 +233,12 @@ export const fetchUserAnalytics = async (userId: string): Promise<{
 }
 
 export const fetchUserChats = async (userId: string): Promise<Chat[]> => {
+  const cacheKey = `chats-${userId}`
+  const cached = getCachedData(cacheKey)
+  if (cached) {
+    return cached
+  }
+
   try {
     const { data, error } = await supabase
       .from("chats")
@@ -181,7 +247,10 @@ export const fetchUserChats = async (userId: string): Promise<Chat[]> => {
       .order("updated_at", { ascending: false })
 
     if (error) throw error
-    return data || []
+    
+    const result = data || []
+    setCachedData(cacheKey, result)
+    return result
   } catch (error) {
     console.error("Error fetching chats:", error)
     throw error
@@ -189,6 +258,12 @@ export const fetchUserChats = async (userId: string): Promise<Chat[]> => {
 }
 
 export const fetchChatMessages = async (chatId: string): Promise<Message[]> => {
+  const cacheKey = `messages-${chatId}`
+  const cached = getCachedData(cacheKey)
+  if (cached) {
+    return cached
+  }
+
   try {
     const { data, error } = await supabase
       .from("messages")
@@ -197,10 +272,26 @@ export const fetchChatMessages = async (chatId: string): Promise<Message[]> => {
       .order("created_at", { ascending: true })
 
     if (error) throw error
-    return data || []
+    
+    const result = data || []
+    setCachedData(cacheKey, result)
+    return result
   } catch (error) {
     console.error("Error fetching messages:", error)
     throw error
+  }
+}
+
+// Clear cache when data is modified
+export const clearCache = (pattern?: string) => {
+  if (pattern) {
+    for (const key of cache.keys()) {
+      if (key.includes(pattern)) {
+        cache.delete(key)
+      }
+    }
+  } else {
+    cache.clear()
   }
 }
 

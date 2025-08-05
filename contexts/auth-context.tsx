@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react"
 import type { User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
@@ -44,6 +44,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false)
   const router = useRouter()
 
+  // Memoized fetchUserProfile function to prevent unnecessary re-renders
+  const fetchUserProfile = useCallback(async (userId: string) => {
+    try {
+      console.log("Fetching profile for user:", userId)
+      const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
+
+      if (error) {
+        console.error("Error fetching user profile:", error)
+        // If profile doesn't exist (PGRST116), that's okay - user might need to complete signup or trigger hasn't fired yet
+        if (error.code !== "PGRST116") {
+          console.error("Unexpected error:", error)
+        }
+        setUserProfile(null) // Ensure profile is null if not found or error
+      } else {
+        console.log("Profile fetched successfully:", data)
+        setUserProfile(data)
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error)
+      setUserProfile(null)
+    } finally {
+      setLoading(false)
+      setIsInitialized(true)
+    }
+  }, [])
+
   // Handle page visibility changes
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -67,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [isInitialized, user])
+  }, [isInitialized, user, fetchUserProfile])
 
   useEffect(() => {
     // Get initial session
@@ -103,34 +129,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [fetchUserProfile])
 
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      console.log("Fetching profile for user:", userId)
-      const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
-
-      if (error) {
-        console.error("Error fetching user profile:", error)
-        // If profile doesn't exist (PGRST116), that's okay - user might need to complete signup or trigger hasn't fired yet
-        if (error.code !== "PGRST116") {
-          console.error("Unexpected error:", error)
-        }
-        setUserProfile(null) // Ensure profile is null if not found or error
-      } else {
-        console.log("Profile fetched successfully:", data)
-        setUserProfile(data)
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error)
-      setUserProfile(null)
-    } finally {
-      setLoading(false)
-      setIsInitialized(true)
-    }
-  }
-
-  const signUp = async (email: string, password: string, userData: SignUpData) => {
+  const signUp = useCallback(async (email: string, password: string, userData: SignUpData) => {
     try {
       console.log("Starting signup process for:", email)
 
@@ -161,10 +162,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Sign up error:", error)
       throw error
     }
-  }
+  }, [])
 
   // This function is now primarily for updating existing profiles or creating basic ones if missing (e.g., social logins)
-  const createUserProfile = async (user: User, userData: SignUpData) => {
+  const createUserProfile = useCallback(async (user: User, userData: SignUpData) => {
     try {
       console.log("Attempting to create/update profile for user:", user.id)
 
@@ -253,9 +254,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Error in createUserProfile:", error)
       throw error
     }
-  }
+  }, [fetchUserProfile])
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       console.log("Signing in user:", email)
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -286,9 +287,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Sign in error:", error)
       throw error
     }
-  }
+  }, [createUserProfile])
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
@@ -300,9 +301,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Sign out error:", error)
       throw error
     }
-  }
+  }, [router])
 
-  const updateProfile = async (data: Partial<UserProfile>) => {
+  const updateProfile = useCallback(async (data: Partial<UserProfile>) => {
     if (!user) return
 
     try {
@@ -316,9 +317,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Update profile error:", error)
       throw error
     }
-  }
+  }, [user, fetchUserProfile])
 
-  const value = {
+  // Memoize the context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     userProfile,
     loading,
@@ -326,7 +328,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     updateProfile,
-  }
+  }), [user, userProfile, loading, signUp, signIn, signOut, updateProfile])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
