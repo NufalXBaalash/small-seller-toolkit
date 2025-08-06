@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ThemeToggle } from "@/components/theme-toggle"
 import {
   ArrowRight,
   MessageSquare,
@@ -40,21 +41,22 @@ export default function LandingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Header */}
-      <header className="border-b bg-white/95 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-[#27AE60] to-[#2ECC71] rounded-xl flex items-center justify-center shadow-lg">
               <MessageSquare className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
             </div>
-            <span className="text-lg sm:text-2xl font-bold text-[#27AE60]">
+            <span className="text-lg sm:text-2xl font-bold text-[#27AE60] dark:text-[#2ECC71]">
               Sellio
             </span>
           </div>
           <div className="hidden sm:flex items-center space-x-4">
+            <ThemeToggle />
             <Link href="/login">
-              <Button variant="ghost" className="font-medium text-[#555555] hover:text-[#27AE60]">
+              <Button variant="ghost" className="font-medium text-gray-600 dark:text-gray-300 hover:text-[#27AE60] dark:hover:text-[#2ECC71]">
                 Login
               </Button>
             </Link>
@@ -64,8 +66,9 @@ export default function LandingPage() {
               </Button>
             </Link>
           </div>
-          <div className="sm:hidden">
-            <Button variant="ghost" size="sm" className="text-[#555555]">
+          <div className="sm:hidden flex items-center space-x-2">
+            <ThemeToggle />
+            <Button variant="ghost" size="sm" className="text-gray-600 dark:text-gray-300">
               <Menu className="h-5 w-5" />
             </Button>
           </div>
@@ -103,15 +106,15 @@ export default function LandingPage() {
                 Trusted by 10,000+ sellers worldwide
               </Badge>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#1A1A1A] mb-6 sm:mb-8 leading-tight animate-fade-in-up delay-200">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6 sm:mb-8 leading-tight animate-fade-in-up delay-200">
                 Automate Your
                 <br />
-                <span className="text-[#27AE60] animate-gradient-x">
+                <span className="text-[#27AE60] dark:text-[#2ECC71] animate-gradient-x">
                   Social Selling
                 </span>
               </h1>
 
-              <p className="text-lg sm:text-xl md:text-2xl text-[#555555] mb-8 sm:mb-12 max-w-2xl leading-relaxed animate-fade-in-up delay-400">
+              <p className="text-lg sm:text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 sm:mb-12 max-w-2xl leading-relaxed animate-fade-in-up delay-400">
                 The AI-Powered Dashboard for WhatsApp & Facebook Sellers
               </p>
 
@@ -135,11 +138,11 @@ export default function LandingPage() {
               </div>
 
               {/* Social Proof */}
-              <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8 text-sm text-[#555555] animate-fade-in-up delay-800">
+              <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8 text-sm text-gray-600 dark:text-gray-300 animate-fade-in-up delay-800">
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-2">
                     {[1, 2, 3, 4, 5].map((i) => (
-                      <Avatar key={i} className="h-6 w-6 sm:h-8 sm:w-8 border-2 border-white shadow-lg hover:scale-110 transition-transform duration-300">
+                      <Avatar key={i} className="h-6 w-6 sm:h-8 sm:w-8 border-2 border-white dark:border-gray-700 shadow-lg hover:scale-110 transition-transform duration-300">
                         <AvatarImage src={`/placeholder.svg?height=32&width=32&text=U${i}`} />
                         <AvatarFallback className="bg-[#27AE60] text-white">U{i}</AvatarFallback>
                       </Avatar>
@@ -157,7 +160,7 @@ export default function LandingPage() {
             </div>
 
             <div className={`transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-              <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-gray-100 hover:shadow-3xl transition-all duration-500 transform hover:scale-105 animate-fade-in-up delay-500">
+              <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-gray-100 dark:border-gray-700 hover:shadow-3xl transition-all duration-500 transform hover:scale-105 animate-fade-in-up delay-500">
                 <div className="bg-gradient-to-br from-[#27AE60] to-[#2ECC71] rounded-xl p-6 mb-6 animate-pulse-slow">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2">
@@ -180,8 +183,8 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-[#1A1A1A] mb-2 animate-count-up">$2,450</div>
-                  <div className="text-[#555555] text-sm">Revenue this month</div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white mb-2 animate-count-up">$2,450</div>
+                  <div className="text-gray-600 dark:text-gray-300 text-sm">Revenue this month</div>
                 </div>
               </div>
             </div>
@@ -190,21 +193,21 @@ export default function LandingPage() {
       </section>
 
       {/* Problem → Solution Section */}
-      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-white relative overflow-hidden">
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900 relative overflow-hidden">
         {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#F9F9F9] via-white to-[#F4F6F6]"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-[#F9F9F9] via-white to-[#F4F6F6] dark:from-gray-800 dark:via-gray-900 dark:to-gray-800"></div>
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#27AE60] to-[#2ECC71]"></div>
         
         <div className="container mx-auto max-w-6xl relative z-10">
           <div className={`text-center mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-4 sm:mb-6 animate-fade-in-up">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6 animate-fade-in-up">
               From Chaos to
               <br />
-              <span className="text-[#27AE60] animate-gradient-x">
+              <span className="text-[#27AE60] dark:text-[#2ECC71] animate-gradient-x">
                 Clarity
               </span>
             </h2>
-            <p className="text-lg sm:text-xl text-[#555555] max-w-3xl mx-auto animate-fade-in-up delay-200">
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-200 max-w-3xl mx-auto animate-fade-in-up delay-200">
               Stop losing customers and start growing your business with intelligent automation
             </p>
           </div>
@@ -237,8 +240,8 @@ export default function LandingPage() {
                 <div className={`h-16 w-16 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:rotate-12`}>
                   <item.icon className="h-8 w-8 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-[#1A1A1A] mb-2">{item.problem}</h3>
-                <p className="text-[#27AE60] font-medium">{item.solution}</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.problem}</h3>
+                <p className="text-[#27AE60] dark:text-[#2ECC71] font-medium">{item.solution}</p>
               </div>
             ))}
           </div>
@@ -246,7 +249,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-[#F9F9F9] relative overflow-hidden">
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-[#F9F9F9] dark:bg-gray-800 relative overflow-hidden">
         {/* Background elements */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#27AE60] to-[#2ECC71]"></div>
         <div className="absolute top-20 right-10 w-32 h-32 bg-[#27AE60]/10 rounded-full blur-2xl animate-pulse"></div>
@@ -254,10 +257,10 @@ export default function LandingPage() {
         
         <div className="container mx-auto max-w-6xl relative z-10">
           <div className={`text-center mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-4 sm:mb-6 animate-fade-in-up">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6 animate-fade-in-up">
               Powerful Features
             </h2>
-            <p className="text-lg sm:text-xl text-[#555555] max-w-3xl mx-auto animate-fade-in-up delay-200">
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-200 max-w-3xl mx-auto animate-fade-in-up delay-200">
               Everything you need to scale your social selling business
             </p>
           </div>
@@ -297,27 +300,27 @@ export default function LandingPage() {
                   <div className={`h-16 w-16 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mb-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:rotate-12`}>
                     <feature.icon className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[#1A1A1A] mb-2">
+                  <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
                     {feature.title}
                   </h3>
-                  <p className="text-[#27AE60] font-medium mb-4">{feature.subtitle}</p>
-                  <p className="text-[#555555] text-lg mb-6">{feature.description}</p>
+                  <p className="text-[#27AE60] dark:text-[#2ECC71] font-medium mb-4">{feature.subtitle}</p>
+                  <p className="text-gray-600 dark:text-gray-200 text-lg mb-6">{feature.description}</p>
                   <ul className="space-y-2">
                     {feature.features.map((item, i) => (
                       <li key={i} className="flex items-center gap-3 hover:translate-x-2 transition-transform duration-300">
-                        <CheckCircle className="h-5 w-5 text-[#27AE60] flex-shrink-0 animate-pulse" />
-                        <span className="text-[#555555]">{item}</span>
+                        <CheckCircle className="h-5 w-5 text-[#27AE60] dark:text-[#2ECC71] flex-shrink-0 animate-pulse" />
+                        <span className="text-gray-600 dark:text-gray-200">{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div className={index % 2 === 1 ? 'lg:order-1' : ''}>
-                  <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 hover:shadow-2xl transition-all duration-500 transform hover:scale-105">
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700 hover:shadow-2xl transition-all duration-500 transform hover:scale-105">
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-[#27AE60] mb-2 animate-count-up">
+                      <div className="text-3xl font-bold text-[#27AE60] dark:text-[#2ECC71] mb-2 animate-count-up">
                         {index === 0 ? "98%" : index === 1 ? "24/7" : "$50K+"}
                       </div>
-                      <div className="text-[#555555] text-sm">
+                      <div className="text-gray-600 dark:text-gray-200 text-sm">
                         {index === 0 ? "Response Rate" : index === 1 ? "Monitoring" : "Revenue Generated"}
                       </div>
                     </div>
@@ -330,17 +333,17 @@ export default function LandingPage() {
       </section>
 
       {/* Who It's For Section */}
-      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-white relative overflow-hidden">
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900 relative overflow-hidden">
         {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white via-[#F9F9F9] to-white"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-[#F9F9F9] to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900"></div>
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#27AE60] to-[#2ECC71]"></div>
         
         <div className="container mx-auto max-w-6xl text-center relative z-10">
           <div className={`transition-all duration-1000 delay-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-6 animate-fade-in-up">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 animate-fade-in-up">
               Built for Mobile Entrepreneurs
             </h2>
-            <p className="text-lg sm:text-xl text-[#555555] max-w-3xl mx-auto mb-12 animate-fade-in-up delay-200">
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-200 max-w-3xl mx-auto mb-12 animate-fade-in-up delay-200">
               "Built for solo sellers, small shops, and mobile entrepreneurs who sell through WhatsApp or Facebook every day."
             </p>
 
@@ -350,12 +353,12 @@ export default function LandingPage() {
                 { title: "Small Shops", description: "Local businesses with growing customer bases", icon: Package },
                 { title: "Mobile Entrepreneurs", description: "Business owners who work from anywhere", icon: Smartphone }
               ].map((item, index) => (
-                <div key={item.title} className="bg-[#F9F9F9] rounded-2xl p-8 border border-gray-100 hover:shadow-xl transition-all duration-500 transform hover:scale-105 animate-fade-in-up delay-300">
+                <div key={item.title} className="bg-[#F9F9F9] dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700 hover:shadow-xl transition-all duration-500 transform hover:scale-105 animate-fade-in-up delay-300">
                   <div className="h-12 w-12 bg-[#27AE60] rounded-xl flex items-center justify-center mx-auto mb-4 hover:rotate-12 transition-transform duration-300">
                     <item.icon className="h-6 w-6 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#1A1A1A] mb-2">{item.title}</h3>
-                  <p className="text-[#555555]">{item.description}</p>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{item.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-200">{item.description}</p>
                 </div>
               ))}
             </div>
@@ -364,7 +367,7 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-[#F9F9F9] relative overflow-hidden">
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-[#F9F9F9] dark:bg-gray-800 relative overflow-hidden">
         {/* Background elements */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#27AE60] to-[#2ECC71]"></div>
         <div className="absolute top-32 left-20 w-24 h-24 bg-[#27AE60]/10 rounded-full blur-2xl animate-pulse"></div>
@@ -372,7 +375,7 @@ export default function LandingPage() {
         
         <div className="container mx-auto max-w-6xl relative z-10">
           <div className={`text-center mb-12 sm:mb-16 transition-all duration-1000 delay-1100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-6 animate-fade-in-up">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6 animate-fade-in-up">
               What Our Users Say
             </h2>
           </div>
@@ -400,22 +403,22 @@ export default function LandingPage() {
             ].map((testimonial, index) => (
               <div
                 key={testimonial.name}
-                className={`bg-white rounded-2xl p-8 shadow-lg border border-gray-100 transition-all duration-1000 delay-${1200 + index * 100} hover:shadow-2xl hover:scale-105 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+                className={`bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg border border-gray-100 dark:border-gray-700 transition-all duration-1000 delay-${1200 + index * 100} hover:shadow-2xl hover:scale-105 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
               >
                 <div className="flex items-center gap-1 mb-4">
                   {[1, 2, 3, 4, 5].map((i) => (
                     <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400 animate-pulse" />
                   ))}
                 </div>
-                <p className="text-[#555555] mb-6 italic">"{testimonial.quote}"</p>
+                <p className="text-gray-600 dark:text-gray-200 mb-6 italic">"{testimonial.quote}"</p>
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10 hover:scale-110 transition-transform duration-300">
                     <AvatarImage src={`/placeholder.svg?height=40&width=40&text=${testimonial.avatar}`} />
                     <AvatarFallback className="bg-[#27AE60] text-white">{testimonial.avatar}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-semibold text-[#1A1A1A]">{testimonial.name}</div>
-                    <div className="text-sm text-[#555555]">{testimonial.business}</div>
+                    <div className="font-semibold text-gray-900 dark:text-white">{testimonial.name}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{testimonial.business}</div>
                   </div>
                 </div>
               </div>
@@ -425,9 +428,9 @@ export default function LandingPage() {
       </section>
 
       {/* Security Section */}
-      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-white relative overflow-hidden">
+      <section className="py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-900 relative overflow-hidden">
         {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white via-[#F9F9F9] to-white"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-[#F9F9F9] to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900"></div>
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#27AE60] to-[#2ECC71]"></div>
         
         <div className="container mx-auto max-w-4xl text-center relative z-10">
@@ -435,10 +438,10 @@ export default function LandingPage() {
             <div className="h-16 w-16 bg-[#27AE60] rounded-2xl flex items-center justify-center mx-auto mb-6 hover:scale-110 transition-transform duration-300 animate-bounce-slow">
               <Lock className="h-8 w-8 text-white" />
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-[#1A1A1A] mb-4 animate-fade-in-up">
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4 animate-fade-in-up">
               Your Data is Secure
             </h2>
-            <p className="text-lg text-[#555555] mb-8 animate-fade-in-up delay-200">
+            <p className="text-lg text-gray-600 dark:text-gray-200 mb-8 animate-fade-in-up delay-200">
               Your customer data is encrypted. You own your conversations and inventory.
             </p>
             <div className="grid md:grid-cols-3 gap-6">
@@ -451,8 +454,8 @@ export default function LandingPage() {
                   <div className="h-12 w-12 bg-[#27AE60]/10 rounded-xl flex items-center justify-center mx-auto mb-4 hover:bg-[#27AE60]/20 transition-colors duration-300">
                     <item.icon className="h-6 w-6 text-[#27AE60]" />
                   </div>
-                  <h3 className="font-semibold text-[#1A1A1A] mb-2">{item.title}</h3>
-                  <p className="text-sm text-[#555555]">{item.description}</p>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">{item.title}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-200">{item.description}</p>
                 </div>
               ))}
             </div>
@@ -498,7 +501,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#F9F9F9] py-12 sm:py-16 px-4 sm:px-6 lg:px-8 border-t border-gray-200">
+      <footer className="bg-[#F9F9F9] dark:bg-gray-800 py-12 sm:py-16 px-4 sm:px-6 lg:px-8 border-t border-gray-200 dark:border-gray-700">
         <div className="container mx-auto max-w-6xl">
           <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-5 mb-8 sm:mb-12">
             <div className="sm:col-span-2">
@@ -506,17 +509,17 @@ export default function LandingPage() {
                 <div className="h-8 w-8 sm:h-10 sm:w-10 bg-gradient-to-br from-[#27AE60] to-[#2ECC71] rounded-xl flex items-center justify-center shadow-lg">
                   <MessageSquare className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                 </div>
-                <span className="text-lg sm:text-2xl font-bold text-[#27AE60]">
+                <span className="text-lg sm:text-2xl font-bold text-[#27AE60] dark:text-[#2ECC71]">
                   Sellio
                 </span>
               </div>
-              <p className="text-[#555555] mb-6 max-w-md text-sm sm:text-base">
+              <p className="text-gray-600 dark:text-gray-200 mb-6 max-w-md text-sm sm:text-base">
                 Empowering small sellers with smart automation tools to grow their social selling business.
               </p>
               <div className="flex space-x-4">
                 {[MessageSquare, TrendingUp, Users].map((Icon, index) => (
-                  <div key={index} className="h-8 w-8 sm:h-10 sm:w-10 bg-white rounded-lg flex items-center justify-center hover:bg-[#27AE60]/10 cursor-pointer transition-all duration-300 shadow-sm hover:scale-110">
-                    <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-[#555555] hover:text-[#27AE60]" />
+                  <div key={index} className="h-8 w-8 sm:h-10 sm:w-10 bg-white dark:bg-gray-700 rounded-lg flex items-center justify-center hover:bg-[#27AE60]/10 dark:hover:bg-[#2ECC71]/10 cursor-pointer transition-all duration-300 shadow-sm hover:scale-110">
+                    <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600 dark:text-gray-200 hover:text-[#27AE60] dark:hover:text-[#2ECC71]" />
                   </div>
                 ))}
               </div>
@@ -528,10 +531,10 @@ export default function LandingPage() {
               { title: "Company", items: ["About", "Blog", "Careers", "Privacy"] }
             ].map((section) => (
               <div key={section.title}>
-                <h3 className="font-semibold mb-4 text-base sm:text-lg text-[#1A1A1A]">{section.title}</h3>
-                <ul className="space-y-3 text-[#555555] text-sm sm:text-base">
+                <h3 className="font-semibold mb-4 text-base sm:text-lg text-gray-900 dark:text-white">{section.title}</h3>
+                <ul className="space-y-3 text-gray-600 dark:text-gray-200 text-sm sm:text-base">
                   {section.items.map((item) => (
-                    <li key={item} className="hover:text-[#27AE60] cursor-pointer transition-colors duration-300 hover:translate-x-1">
+                    <li key={item} className="hover:text-[#27AE60] dark:hover:text-[#2ECC71] cursor-pointer transition-colors duration-300 hover:translate-x-1">
                       {item}
                     </li>
                   ))}
@@ -540,13 +543,13 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <div className="border-t border-gray-200 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="text-[#555555] text-xs sm:text-sm text-center sm:text-left">
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-6 sm:pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p className="text-gray-600 dark:text-gray-200 text-xs sm:text-sm text-center sm:text-left">
               © 2024 Sellio. All rights reserved.
             </p>
-            <div className="flex space-x-4 sm:space-x-6 text-xs sm:text-sm text-[#555555]">
+            <div className="flex space-x-4 sm:space-x-6 text-xs sm:text-sm text-gray-600 dark:text-gray-200">
               {["Terms", "Privacy", "Cookies"].map((item) => (
-                <span key={item} className="hover:text-[#27AE60] cursor-pointer transition-colors duration-300">
+                <span key={item} className="hover:text-[#27AE60] dark:hover:text-[#2ECC71] cursor-pointer transition-colors duration-300">
                   {item}
                 </span>
               ))}

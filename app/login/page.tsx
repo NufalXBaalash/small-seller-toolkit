@@ -14,6 +14,7 @@ import { MessageSquare, Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from "lu
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/hooks/use-toast"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -168,14 +169,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-sellio-secondary p-4">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-sellio-secondary dark:bg-gray-900 p-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <Card className="w-full max-w-md shadow-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <MessageSquare className="h-8 w-8 text-sellio-primary" />
-            <span className="text-2xl font-bold text-sellio-text-main">Sellio</span>
+            <span className="text-2xl font-bold text-sellio-text-main dark:text-white">Sellio</span>
           </div>
-          <CardTitle className="text-2xl text-sellio-text-main">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl text-sellio-text-main dark:text-white">Welcome Back</CardTitle>
           <CardDescription className="text-sellio-primary">Sign in to your account to continue managing your business</CardDescription>
         </CardHeader>
         <CardContent>

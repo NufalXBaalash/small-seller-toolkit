@@ -11,9 +11,9 @@ import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function SettingsPage() {
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-background">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
+        <h2 className="text-3xl font-bold tracking-tight text-foreground">Settings</h2>
         <Button>
           <Save className="mr-2 h-4 w-4" />
           Save Changes
@@ -22,7 +22,7 @@ export default function SettingsPage() {
 
       <div className="grid gap-6">
         {/* Appearance Settings */}
-        <Card>
+        <Card className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Palette className="h-5 w-5" />
@@ -33,7 +33,7 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label>Theme</Label>
+                <Label className="text-foreground">Theme</Label>
                 <p className="text-sm text-muted-foreground">Choose your preferred theme</p>
               </div>
               <ThemeToggle />
@@ -42,7 +42,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Platform Integrations */}
-        <Card>
+        <Card className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Smartphone className="h-5 w-5" />
@@ -86,7 +86,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Auto-Reply Settings */}
-        <Card>
+        <Card className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Zap className="h-5 w-5" />
@@ -137,7 +137,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Notification Settings */}
-        <Card>
+        <Card className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Bell className="h-5 w-5" />
@@ -181,7 +181,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Business Information */}
-        <Card>
+        <Card className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Shield className="h-5 w-5" />
@@ -219,7 +219,7 @@ export default function SettingsPage() {
         </Card>
 
         {/* Account Settings */}
-        <Card>
+        <Card className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>
             <CardTitle>Account Settings</CardTitle>
             <CardDescription>Manage your account preferences and security</CardDescription>

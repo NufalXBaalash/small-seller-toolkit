@@ -14,6 +14,7 @@ import { MessageSquare, Mail, Lock, User, Phone, Loader2, AlertCircle, CheckCirc
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/hooks/use-toast"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface SignupFormData {
   firstName: string;
@@ -202,13 +203,16 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800 p-4">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <Card className="w-full max-w-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-4">
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <CardTitle className="text-green-800 text-sellio-text-main">Account Created Successfully!</CardTitle>
+            <CardTitle className="text-green-800 dark:text-green-400 text-sellio-text-main dark:text-white">Account Created Successfully!</CardTitle>
             <CardDescription className="text-sellio-primary">
               We've sent a verification email to <strong>{formData.email}</strong>. Please check your inbox and click
               the verification link to activate your account.
@@ -249,14 +253,17 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+              <Card className="w-full max-w-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
             <MessageSquare className="h-8 w-8 text-emerald-600" />
-            <span className="text-2xl font-bold text-gray-900">Sellio</span>
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">Sellio</span>
           </div>
-          <CardTitle>Create Your Account</CardTitle>
+          <CardTitle className="text-gray-900 dark:text-white">Create Your Account</CardTitle>
           <CardDescription>Start automating your social selling business today</CardDescription>
         </CardHeader>
         <CardContent>
