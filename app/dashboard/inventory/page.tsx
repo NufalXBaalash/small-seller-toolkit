@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useCallback } from "react"
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchUserProducts, updateProduct, deleteProduct, testDatabaseConnection, clearCache } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -174,53 +174,72 @@ StatsCard.displayName = "StatsCard"
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [addProductModalOpen, setAddProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const { user } = useAuth()
+  const { user, loading } = useAuth();
+  const loadingTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [showLoadingError, setShowLoadingError] = useState(false);
 
   // Debounce search term to reduce filtering operations
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   const fetchProducts = useCallback(async () => {
-    if (!user?.id) return
-
+    console.log('[InventoryPage] fetchProducts: called');
+    setShowLoadingError(false);
+    setPageLoading(true);
+    if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
+    loadingTimeout.current = setTimeout(() => {
+      setShowLoadingError(true);
+      console.error('[InventoryPage] fetchProducts: Loading timeout!');
+    }, 10000);
     try {
-      setLoading(true)
-      setError(null)
-      console.log("Starting to fetch products for user:", user.id)
-      
-      // Test database connection first
-      const connectionTest = await testDatabaseConnection()
-      if (!connectionTest.success) {
-        throw new Error(`Database connection failed: ${connectionTest.error}`)
+      if (!user?.id) {
+        console.log('[InventoryPage] fetchProducts: No user, abort fetch');
+        return;
       }
-      
-      const data = await fetchUserProducts(user.id)
-      console.log("Products fetched successfully:", data.length, "products")
-      setProducts(data)
+      setError(null);
+      console.log('[InventoryPage] fetchProducts: Before testDatabaseConnection');
+      const connectionTest = await testDatabaseConnection();
+      console.log('[InventoryPage] fetchProducts: After testDatabaseConnection', connectionTest);
+      if (!connectionTest.success) {
+        console.log('[InventoryPage] fetchProducts: Database connection failed', connectionTest.error);
+        throw new Error(`Database connection failed: ${connectionTest.error}`);
+      }
+      console.log('[InventoryPage] fetchProducts: Before fetchUserProducts');
+      const data = await fetchUserProducts(user.id);
+      console.log('[InventoryPage] fetchProducts: Products fetched successfully:', data.length, 'products');
+      setProducts(data);
     } catch (err) {
-      console.error("Error fetching products:", err)
-      const errorMessage = err instanceof Error ? err.message : "Failed to load products. Please try again."
-      setError(errorMessage)
+      console.error('[InventoryPage] fetchProducts: Error fetching products:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load products. Please try again.';
+      setError(errorMessage);
     } finally {
-      setLoading(false)
+      setPageLoading(false);
+      if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
+      console.log('[InventoryPage] fetchProducts: setPageLoading(false)');
     }
-  }, [user?.id])
+  }, [user?.id]);
 
   // Use the visibility hook to refetch data when page becomes visible
-  useRefetchOnVisibility(fetchProducts)
+  useRefetchOnVisibility(() => {
+    console.log('[InventoryPage] useRefetchOnVisibility: triggered');
+    if (!loading && user?.id) {
+      fetchProducts();
+    }
+  });
 
   useEffect(() => {
-    if (user?.id) {
-      console.log("User authenticated, fetching products for:", user.id)
-      fetchProducts()
-    } else {
-      console.log("User not authenticated or no user ID")
+    clearCache();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user?.id) {
+      fetchProducts();
     }
-  }, [user?.id, fetchProducts])
+  }, [user?.id, loading]);
 
   const handleProductUpdate = useCallback(async (productId: string, updates: Partial<Product>) => {
     try {
@@ -312,7 +331,30 @@ export default function InventoryPage() {
     },
   ], [stats])
 
-  if (loading) {
+  if (!loading && !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Session expired</h3>
+          <p className="text-gray-600 mb-4">Please <a href='/login' className='text-blue-600 underline'>login again</a>.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (showLoadingError) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Loading took too long</h3>
+          <p className="text-gray-600 mb-4">Something went wrong. <button onClick={fetchProducts} className="text-blue-600 underline">Try Again</button></p>
+        </div>
+      </div>
+    );
+  }
+
+  if (pageLoading) {
+    console.log('[InventoryPage] Render: Loading spinner')
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -321,6 +363,7 @@ export default function InventoryPage() {
   }
 
   if (error) {
+    console.log('[InventoryPage] Render: Error', error)
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">

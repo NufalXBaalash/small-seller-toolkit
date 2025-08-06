@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [error, setError] = useState("")
   const [fieldErrors, setFieldErrors] = useState<{email?: string; password?: string}>({})
 
-  const { signIn } = useAuth()
+  const { signIn, signOut, user, loading } = useAuth()
   const router = useRouter()
 
   // Email validation
@@ -106,7 +106,7 @@ export default function LoginPage() {
     }, 15000) // 15 second timeout
 
     try {
-      await signIn(email.trim(), password)
+      await signIn(email.trim(), password, rememberMe)
       
       // Clear the timeout since login was successful
       clearTimeout(timeoutId)
@@ -132,14 +132,12 @@ export default function LoginPage() {
           errorMessage = "Please enter a valid email address."
         } else if (error.message.includes("user-disabled")) {
           errorMessage = "This account has been disabled. Please contact support."
-        } else if (error.message.includes("user-not-found")) {
-          errorMessage = "No account found with this email address."
-        } else if (error.message.includes("wrong-password")) {
-          errorMessage = "Incorrect password. Please try again."
+        } else if (error.message.includes("user-not-found") || error.message.includes("wrong-password") || error.message.includes("Invalid")) {
+          errorMessage = "Invalid email or password. Please check your credentials."
         } else if (error.message.includes("too-many-requests")) {
-          errorMessage = "Too many failed attempts. Please try again later."
-        } else {
-          errorMessage = error.message
+          errorMessage = "Too many login attempts. Please wait a few minutes before trying again."
+        } else if (error.message.includes("network")) {
+          errorMessage = "Network error. Please check your connection and try again."
         }
       }
       
@@ -150,11 +148,127 @@ export default function LoginPage() {
         variant: "destructive",
       })
     } finally {
-      // Clear the timeout to prevent it from firing after we're done
-      clearTimeout(timeoutId)
       setIsLoading(false)
     }
   }
+
+  // Check if Supabase environment variables are configured
+  const supabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // If user is already logged in, show already logged in message
+  if (user && typeof window !== 'undefined') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-sellio-secondary dark:bg-gray-900 p-4">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <Card className="w-full max-w-md shadow-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <MessageSquare className="h-8 w-8 text-sellio-primary" />
+              <span className="text-2xl font-bold text-sellio-text-main dark:text-white">Sellio</span>
+            </div>
+            <CardTitle className="text-2xl text-sellio-text-main dark:text-white">Already Logged In</CardTitle>
+            <CardDescription className="text-sellio-primary">You are already signed in to your account</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-sellio-primary/10 border border-sellio-primary/20 rounded-lg p-4 text-center">
+              <p className="text-sm text-sellio-primary mb-2">
+                Welcome back! You're currently signed in as:
+              </p>
+              <p className="font-medium text-sellio-text-main dark:text-white">
+                {user.email}
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-3">
+              <Link href="/dashboard" className="w-full">
+                <Button className="w-full bg-sellio-primary hover:bg-sellio-accent text-white">
+                  Go to Dashboard
+                </Button>
+              </Link>
+              
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={async () => {
+                  await signOut()
+                }}
+              >
+                Sign Out & Login as Different User
+              </Button>
+              
+              <Link href="/" className="w-full">
+                <Button variant="ghost" className="w-full">
+                  Back to Home
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Show configuration error if Supabase is not configured
+  if (!supabaseConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-sellio-secondary dark:bg-gray-900 p-4">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <Card className="w-full max-w-md shadow-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <MessageSquare className="h-8 w-8 text-sellio-primary" />
+              <span className="text-2xl font-bold text-sellio-text-main dark:text-white">Sellio</span>
+            </div>
+            <CardTitle className="text-2xl text-sellio-text-main dark:text-white">Configuration Required</CardTitle>
+            <CardDescription className="text-sellio-danger">Application needs to be configured</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-sellio-warning/20 border border-sellio-warning rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-5 w-5 text-sellio-danger flex-shrink-0" />
+                <p className="font-semibold text-sellio-danger">Missing Configuration</p>
+              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                Supabase environment variables are not configured. Please follow these steps:
+              </p>
+              <ol className="text-sm text-gray-700 dark:text-gray-300 space-y-1 list-decimal list-inside">
+                <li>Create a <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">.env.local</code> file in the project root</li>
+                <li>Add your Supabase URL and API keys</li>
+                <li>Restart the development server</li>
+              </ol>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Need help? Check the setup instructions
+              </p>
+              <Link href="/" className="w-full">
+                <Button variant="outline" className="w-full">
+                  Back to Home
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-600 dark:text-gray-400">Loading authentication...</p>
+        </div>
+      </div>
+    )
+  }
+
+
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword)

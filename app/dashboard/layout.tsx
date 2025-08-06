@@ -1,3 +1,5 @@
+"use client";
+
 import type React from "react"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -11,12 +13,14 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { ProtectedRoute } from "@/components/protected-route"
+import { usePathname } from "next/navigation";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const pathname = usePathname();
   return (
     <ProtectedRoute>
       <SidebarProvider>
@@ -39,7 +43,7 @@ export default function DashboardLayout({
               </Breadcrumb>
             </div>
           </header>
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0" key={pathname}>{children}</div>
         </SidebarInset>
       </SidebarProvider>
     </ProtectedRoute>

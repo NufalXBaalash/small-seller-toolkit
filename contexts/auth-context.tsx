@@ -12,7 +12,7 @@ interface AuthContextType {
   userProfile: UserProfile | null
   loading: boolean
   signUp: (email: string, password: string, userData: SignUpData) => Promise<void>
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string, persistSession?: boolean) => Promise<void>
   signOut: () => Promise<void>
   updateProfile: (data: Partial<UserProfile>) => Promise<void>
 }
@@ -47,26 +47,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Memoized fetchUserProfile function to prevent unnecessary re-renders
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
-      console.log("Fetching profile for user:", userId)
+      console.log('[AuthContext] fetchUserProfile: Fetching profile for user:', userId)
       const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
 
       if (error) {
-        console.error("Error fetching user profile:", error)
+        console.error('[AuthContext] fetchUserProfile: Error fetching user profile:', error)
         // If profile doesn't exist (PGRST116), that's okay - user might need to complete signup or trigger hasn't fired yet
         if (error.code !== "PGRST116") {
-          console.error("Unexpected error:", error)
+          console.error('[AuthContext] fetchUserProfile: Unexpected error:', error)
         }
         setUserProfile(null) // Ensure profile is null if not found or error
       } else {
-        console.log("Profile fetched successfully:", data)
+        console.log('[AuthContext] fetchUserProfile: Profile fetched successfully:', data)
         setUserProfile(data)
       }
     } catch (error) {
-      console.error("Error fetching user profile:", error)
+      console.error('[AuthContext] fetchUserProfile: Error:', error)
       setUserProfile(null)
     } finally {
       setLoading(false)
       setIsInitialized(true)
+      console.log('[AuthContext] fetchUserProfile: setLoading(false), setIsInitialized(true)')
     }
   }, [])
 
@@ -74,8 +75,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && isInitialized) {
-        // Page became visible again, refresh auth state
+        console.log('[AuthContext] visibilitychange: Page became visible, refreshing auth state')
         supabase.auth.getSession().then(({ data: { session } }) => {
+          console.log('[AuthContext] visibilitychange: getSession result:', session)
           if (session?.user && !user) {
             setUser(session.user)
             fetchUserProfile(session.user.id)
@@ -84,6 +86,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null)
             setUserProfile(null)
             setLoading(false)
+            setIsInitialized(true)
+          } else if (!session?.user && !user) {
+            // No user in session and already logged out
+            setLoading(false)
+            setIsInitialized(true)
           }
         })
       }
@@ -97,7 +104,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Get initial session
+    console.log('[AuthContext] useEffect: Get initial session')
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[AuthContext] supabase.auth.getSession result:', session)
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchUserProfile(session.user.id)
@@ -111,19 +120,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event, session?.user?.id)
+      console.log('[AuthContext] onAuthStateChange:', event, session?.user?.id)
       setUser(session?.user ?? null)
 
       if (session?.user) {
         // If this is a new signup, the profile is created by the database trigger.
         // We just need to fetch it.
         if (event === "SIGNED_UP" as any) {
-          console.log("New user signed up, profile should be created by trigger. Fetching profile...")
+          console.log('[AuthContext] New user signed up, fetching profile...')
         }
         await fetchUserProfile(session.user.id)
       } else {
         setUserProfile(null)
         setLoading(false)
+        setIsInitialized(true)
       }
       setIsInitialized(true)
     })
@@ -256,23 +266,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchUserProfile])
 
-  const signIn = useCallback(async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string, persistSession: boolean = true) => {
     try {
-      console.log("Signing in user:", email)
+      console.log("Signing in user:", email, "persistSession:", persistSession)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          persistSession,
+        },
       })
-
       if (error) throw error
-
       console.log("Sign in successful")
-
       // After sign-in, ensure user profile exists in public.users
-      // This handles cases where the trigger might not have run (e.g., social login, or old signups)
       if (data.user) {
         const { data: existingProfile } = await supabase.from("users").select("id").eq("id", data.user.id).single()
-
         if (!existingProfile) {
           console.log("No profile found in public.users, creating basic profile after sign-in.")
           await createUserProfile(data.user, {

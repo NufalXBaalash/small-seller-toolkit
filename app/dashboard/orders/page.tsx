@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchUserOrders, createOrder } from "@/lib/supabase"
+import { fetchUserOrders, createOrder, clearCache } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -39,16 +39,16 @@ interface Order {
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
-  const { user } = useAuth()
+  const { user, loading } = useAuth();
 
   const fetchOrders = async () => {
     if (!user?.id) return
 
     try {
-      setLoading(true)
+      setPageLoading(true)
       setError(null)
       const data = await fetchUserOrders(user.id)
       setOrders(data)
@@ -56,7 +56,7 @@ export default function OrdersPage() {
       console.error("Error fetching orders:", err)
       setError("Failed to load orders. Please try again.")
     } finally {
-      setLoading(false)
+      setPageLoading(false)
     }
   }
 
@@ -64,10 +64,14 @@ export default function OrdersPage() {
   useRefetchOnVisibility(fetchOrders)
 
   useEffect(() => {
-    if (user?.id) {
-      fetchOrders()
+    clearCache();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user?.id) {
+      fetchOrders();
     }
-  }, [user?.id])
+  }, [user?.id, loading]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -130,7 +134,7 @@ export default function OrdersPage() {
     avgOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + o.total_amount, 0) / orders.length : 0
   }
 
-  if (loading) {
+  if (pageLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -146,6 +150,17 @@ export default function OrdersPage() {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error Loading Orders</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <Button onClick={fetchOrders}>Try Again</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!loading && !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Session expired</h3>
+          <p className="text-gray-600 mb-4">Please <a href='/login' className='text-blue-600 underline'>login again</a>.</p>
         </div>
       </div>
     )

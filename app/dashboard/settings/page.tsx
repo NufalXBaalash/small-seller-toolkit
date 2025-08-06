@@ -1,3 +1,6 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -6,21 +9,120 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { MessageSquare, Bell, Shield, Smartphone, Zap, Save, Palette } from "lucide-react"
+import { MessageSquare, Bell, Shield, Smartphone, Zap, Save, Palette, User } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useAuth } from "@/contexts/auth-context"
+import { toast } from "@/hooks/use-toast"
 
 export default function SettingsPage() {
+  const { userProfile, updateProfile } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
+  const [profileData, setProfileData] = useState({
+    first_name: userProfile?.first_name || "",
+    last_name: userProfile?.last_name || "",
+    business_name: userProfile?.business_name || "",
+    phone_number: userProfile?.phone_number || "",
+  })
+
+  // Update form data when userProfile changes
+  useEffect(() => {
+    if (userProfile) {
+      setProfileData({
+        first_name: userProfile.first_name || "",
+        last_name: userProfile.last_name || "",
+        business_name: userProfile.business_name || "",
+        phone_number: userProfile.phone_number || "",
+      })
+    }
+  }, [userProfile])
+
+  const handleProfileUpdate = async () => {
+    setIsLoading(true)
+    try {
+      await updateProfile(profileData)
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been updated successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Update Failed",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-background">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight text-foreground">Settings</h2>
-        <Button>
+        <Button onClick={handleProfileUpdate} disabled={isLoading}>
           <Save className="mr-2 h-4 w-4" />
-          Save Changes
+          {isLoading ? "Saving..." : "Save Changes"}
         </Button>
       </div>
 
       <div className="grid gap-6">
+        {/* Profile Settings */}
+        <Card className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <User className="h-5 w-5" />
+              <span>Profile Information</span>
+            </CardTitle>
+            <CardDescription>Update your personal and business information</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="first_name">First Name</Label>
+                <Input
+                  id="first_name"
+                  value={profileData.first_name}
+                  onChange={(e) => setProfileData(prev => ({ ...prev, first_name: e.target.value }))}
+                  placeholder="Enter your first name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Last Name</Label>
+                <Input
+                  id="last_name"
+                  value={profileData.last_name}
+                  onChange={(e) => setProfileData(prev => ({ ...prev, last_name: e.target.value }))}
+                  placeholder="Enter your last name"
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="business_name">Business Name</Label>
+              <Input
+                id="business_name"
+                value={profileData.business_name}
+                onChange={(e) => setProfileData(prev => ({ ...prev, business_name: e.target.value }))}
+                placeholder="Enter your business name"
+              />
+              <p className="text-sm text-muted-foreground">This will appear in the sidebar under Sellio</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone_number">Phone Number</Label>
+              <Input
+                id="phone_number"
+                value={profileData.phone_number}
+                onChange={(e) => setProfileData(prev => ({ ...prev, phone_number: e.target.value }))}
+                placeholder="Enter your phone number"
+              />
+            </div>
+            
+            <Button onClick={handleProfileUpdate} disabled={isLoading}>
+              {isLoading ? "Updating..." : "Update Profile"}
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Appearance Settings */}
         <Card className="bg-card dark:bg-gray-800 border-gray-200 dark:border-gray-700">
           <CardHeader>

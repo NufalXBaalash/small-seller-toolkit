@@ -194,11 +194,11 @@ StatsCard.displayName = "StatsCard"
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [loading, setLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
-  const { user } = useAuth()
+  const { user, loading } = useAuth();
 
   // Debounce search term to reduce filtering operations
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
@@ -207,7 +207,7 @@ export default function CustomersPage() {
     if (!user?.id) return
 
     try {
-      setLoading(true)
+      setPageLoading(true)
       setError(null)
       const data = await fetchUserCustomers(user.id)
       setCustomers(data)
@@ -215,18 +215,26 @@ export default function CustomersPage() {
       console.error("Error fetching customers:", err)
       setError("Failed to load customers. Please try again.")
     } finally {
-      setLoading(false)
+      setPageLoading(false)
     }
   }, [user?.id])
 
   // Use the visibility hook to refetch data when page becomes visible
-  useRefetchOnVisibility(fetchCustomers)
+  useRefetchOnVisibility(() => {
+    if (!loading && user?.id) {
+      fetchCustomers();
+    }
+  });
 
   useEffect(() => {
-    if (user?.id) {
-      fetchCustomers()
+    if (!loading && user?.id) {
+      fetchCustomers();
     }
-  }, [user?.id, fetchCustomers])
+  }, [user?.id, loading]);
+
+  useEffect(() => {
+    clearCache();
+  }, []);
 
   const handleCustomerUpdate = useCallback(async (customerId: string, updates: Partial<Customer>) => {
     try {
@@ -326,7 +334,7 @@ export default function CustomersPage() {
     },
   ], [stats])
 
-  if (loading) {
+  if (pageLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -342,6 +350,17 @@ export default function CustomersPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Customers</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button onClick={fetchCustomers}>Try Again</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!loading && !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Session expired</h3>
+          <p className="text-gray-600 mb-4">Please <a href='/login' className='text-blue-600 underline'>login again</a>.</p>
         </div>
       </div>
     )

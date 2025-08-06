@@ -453,24 +453,29 @@ export const createOrder = async (userId: string, orderData: {
 }
 
 export const testDatabaseConnection = async () => {
+  console.log('[testDatabaseConnection] called');
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Supabase connection timeout')), 8000)
+  );
   try {
-    const { data, error } = await supabase
-      .from("users")
-      .select("id")
-      .limit(1)
-
+    const { data, error } = await Promise.race([
+      supabase.from("users").select("id").limit(1),
+      timeoutPromise
+    ]);
     if (error) {
-      return { success: false, error: error.message }
+      console.log('[testDatabaseConnection] error:', error);
+      return { success: false, error: error.message };
     }
-
-    return { success: true, data }
+    console.log('[testDatabaseConnection] success:', data);
+    return { success: true, data };
   } catch (error) {
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }
+    console.log('[testDatabaseConnection] exception:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    };
   }
-}
+};
 
 // Type definitions
 interface Chat {

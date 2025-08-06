@@ -80,7 +80,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <span className="text-lg font-bold text-sellio-primary">
               Sellio
             </span>
-            {userProfile?.business_name && <span className="text-xs text-sellio-text-muted">{userProfile.business_name}</span>}
+            <span className="text-xs text-sellio-text-muted">
+              {userProfile?.business_name || 
+               (userProfile?.first_name && userProfile?.last_name 
+                 ? `${userProfile.first_name} ${userProfile.last_name}` 
+                 : userProfile?.email || 'User')}
+            </span>
           </div>
         </div>
       </SidebarHeader>
@@ -92,10 +97,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <Link href={item.url}>
+                    <button
+                      type="button"
+                      onClick={() => (window.location.href = item.url)}
+                      className="flex items-center w-full h-full bg-transparent border-0 p-0 m-0 text-left"
+                    >
                       <item.icon />
                       <span>{item.title}</span>
-                    </Link>
+                    </button>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

@@ -186,10 +186,10 @@ export default function ChatsPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  const { user } = useAuth()
+  const { user, loading } = useAuth();
 
   // Debounce search term to reduce filtering operations
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
@@ -198,7 +198,7 @@ export default function ChatsPage() {
     if (!user?.id) return
 
     try {
-      setIsLoading(true)
+      setPageLoading(true)
       const data = await fetchUserChats(user.id)
       setChats(data)
       if (data.length > 0) {
@@ -213,18 +213,26 @@ export default function ChatsPage() {
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setPageLoading(false)
     }
   }, [user?.id])
 
   // Use the visibility hook to refetch data when page becomes visible
-  useRefetchOnVisibility(fetchChats)
+  useRefetchOnVisibility(() => {
+    if (!loading && user?.id) {
+      fetchChats();
+    }
+  });
 
   useEffect(() => {
-    if (user?.id) {
-      fetchChats()
+    if (!loading && user?.id) {
+      fetchChats();
     }
-  }, [user?.id, fetchChats])
+  }, [user?.id, loading]);
+
+  useEffect(() => {
+    clearCache();
+  }, []);
 
   const fetchMessages = useCallback(async (chatId: string) => {
     try {
@@ -295,7 +303,18 @@ export default function ChatsPage() {
     { text: "Payment Options", color: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100" },
   ], [])
 
-  if (isLoading) {
+  if (!pageLoading && !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Session expired</h3>
+          <p className="text-gray-600 mb-4">Please <a href='/login' className='text-blue-600 underline'>login again</a>.</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (pageLoading) {
     return (
       <div className="flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
         <div className="flex items-center justify-center min-h-[400px]">

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchUserAnalytics } from "@/lib/supabase"
+import { testDatabaseConnection } from "@/lib/supabase";
+import { clearCache } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -21,6 +23,7 @@ import {
 } from "recharts"
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Loader2, Calendar } from "lucide-react"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
+import React, { useRef } from "react";
 
 interface Order {
   id: string
@@ -49,38 +52,66 @@ export default function AnalyticsPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([])
   const [productStats, setProductStats] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d")
-  const { user } = useAuth()
+  const { user, loading } = useAuth();
+  const loadingTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [showLoadingError, setShowLoadingError] = useState(false);
 
   const fetchAnalytics = async () => {
-    if (!user?.id) return
-
+    console.log('[AnalyticsPage] fetchAnalytics: called');
+    setShowLoadingError(false);
+    setPageLoading(true);
+    if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
+    loadingTimeout.current = setTimeout(() => {
+      setShowLoadingError(true);
+      console.error('[AnalyticsPage] fetchAnalytics: Loading timeout!');
+    }, 10000);
     try {
-      setLoading(true)
-      setError(null)
-      const data = await fetchUserAnalytics(user.id)
-      setOrders(data.orders as Order[])
-      setCustomers(data.customers as Customer[])
-      setDailyStats(data.dailyStats || [])
-      setProductStats(data.productStats || [])
+      if (!user?.id) return;
+      setError(null);
+      console.log('[AnalyticsPage] fetchAnalytics: Before testDatabaseConnection');
+      const connectionTest = await testDatabaseConnection();
+      console.log('[AnalyticsPage] fetchAnalytics: After testDatabaseConnection', connectionTest);
+      if (!connectionTest.success) {
+        console.log('[AnalyticsPage] fetchAnalytics: Database connection failed', connectionTest.error);
+        throw new Error(`Database connection failed: ${connectionTest.error}`);
+      }
+      console.log('[AnalyticsPage] fetchAnalytics: Before fetchUserAnalytics');
+      const data = await fetchUserAnalytics(user.id);
+      console.log('[AnalyticsPage] fetchAnalytics: Analytics fetched successfully');
+      setOrders(data.orders as Order[]);
+      setCustomers(data.customers as Customer[]);
+      setDailyStats(data.dailyStats || []);
+      setProductStats(data.productStats || []);
     } catch (err) {
-      console.error("Error fetching analytics:", err)
-      setError("Failed to load analytics. Please try again.")
+      console.error('[AnalyticsPage] fetchAnalytics: Error:', err);
+      setError('Failed to load analytics. Please try again.');
     } finally {
-      setLoading(false)
+      setPageLoading(false);
+      if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
+      console.log('[AnalyticsPage] fetchAnalytics: setPageLoading(false)');
     }
   }
 
   // Use the visibility hook to refetch data when page becomes visible
-  useRefetchOnVisibility(fetchAnalytics)
+  useRefetchOnVisibility(() => {
+    console.log('[AnalyticsPage] useRefetchOnVisibility: triggered');
+    if (!loading && user?.id) {
+      fetchAnalytics();
+    }
+  });
 
   useEffect(() => {
-    if (user?.id) {
-      fetchAnalytics()
+    clearCache();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user?.id) {
+      fetchAnalytics();
     }
-  }, [user?.id, timeRange])
+  }, [user?.id, loading]);
 
   // Calculate analytics from real data
   const totalRevenue = orders.reduce((sum, order) => sum + (order.total_amount || 0), 0)
@@ -159,7 +190,18 @@ export default function AnalyticsPage() {
     ? ((currentPeriodRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100 
     : 0
 
-  if (loading) {
+  if (showLoadingError) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-red-600 mb-2">Loading took too long</h3>
+          <p className="text-gray-600 mb-4">Something went wrong. <button onClick={fetchAnalytics} className="text-blue-600 underline">Try Again</button></p>
+        </div>
+      </div>
+    );
+  }
+
+  if (pageLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -175,6 +217,17 @@ export default function AnalyticsPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Analytics</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button onClick={fetchAnalytics}>Try Again</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!loading && !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Session expired</h3>
+          <p className="text-gray-600 mb-4">Please <a href='/login' className='text-blue-600 underline'>login again</a>.</p>
         </div>
       </div>
     )

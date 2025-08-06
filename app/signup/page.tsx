@@ -39,6 +39,9 @@ interface UserMetadata {
 }
 
 export default function SignupPage() {
+  // Check if Supabase environment variables are configured
+  const supabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
   const [formData, setFormData] = useState<SignupFormData>({
     firstName: "",
     lastName: "",
@@ -199,6 +202,53 @@ export default function SignupPage() {
       title: "Feature Coming Soon",
       description: `${provider} signup will be available soon.`,
     })
+  }
+
+  // Show configuration error if Supabase is not configured
+  if (!supabaseConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800 p-4">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        <Card className="w-full max-w-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <CardHeader className="text-center">
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <MessageSquare className="h-8 w-8 text-sellio-primary" />
+              <span className="text-2xl font-bold text-sellio-text-main dark:text-white">Sellio</span>
+            </div>
+            <CardTitle className="text-2xl text-sellio-text-main dark:text-white">Configuration Required</CardTitle>
+            <CardDescription className="text-sellio-danger">Application needs to be configured</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-sellio-warning/20 border border-sellio-warning rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="h-5 w-5 text-sellio-danger flex-shrink-0" />
+                <p className="font-semibold text-sellio-danger">Missing Configuration</p>
+              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                Supabase environment variables are not configured. Please follow these steps:
+              </p>
+              <ol className="text-sm text-gray-700 dark:text-gray-300 space-y-1 list-decimal list-inside">
+                <li>Create a <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">.env.local</code> file in the project root</li>
+                <li>Add your Supabase URL and API keys</li>
+                <li>Restart the development server</li>
+              </ol>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                Need help? Check the setup instructions
+              </p>
+              <Link href="/" className="w-full">
+                <Button variant="outline" className="w-full">
+                  Back to Home
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   if (success) {
