@@ -119,7 +119,7 @@ export default function LandingPage() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-8 animate-fade-in-up delay-600">
-                <Link href="/dashboard" className="w-full sm:w-auto">
+                <Link href="/signup" className="w-full sm:w-auto">
                   <Button
                     size="lg"
                     className="w-full sm:w-auto bg-gradient-to-r from-[#27AE60] to-[#2ECC71] hover:from-[#2ECC71] hover:to-[#27AE60] text-white text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 h-auto font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:rotate-1"
@@ -479,7 +479,7 @@ export default function LandingPage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center animate-fade-in-up delay-400">
-              <Link href="/dashboard" className="w-full sm:w-auto">
+              <Link href="/signup" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   className="w-full sm:w-auto bg-white text-[#27AE60] hover:bg-gray-100 text-base sm:text-lg px-6 sm:px-8 py-3 sm:py-4 h-auto font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:rotate-1"

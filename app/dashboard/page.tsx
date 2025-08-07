@@ -8,6 +8,7 @@ import { WhatsAppConnectModal } from "@/components/whatsapp-connect-modal"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchUserDashboardData } from "@/lib/supabase"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
+import { useRouter } from "next/navigation";
 import {
   MessageSquare,
   Package,
@@ -169,7 +170,15 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { user, userProfile } = useAuth()
+  const { user, userProfile, loading: authLoading } = useAuth()
+  const router = useRouter();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login");
+    }
+  }, [authLoading, user, router]);
 
   const fetchDashboardData = useCallback(async () => {
     if (!user?.id) {
@@ -278,8 +287,10 @@ export default function Dashboard() {
   useRefetchOnVisibility(fetchDashboardData)
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [fetchDashboardData])
+    if (user && !authLoading) {
+      fetchDashboardData()
+    }
+  }, [user, authLoading, fetchDashboardData])
 
   // Memoized stats cards data
   const statsCards = useMemo(() => [
@@ -318,7 +329,7 @@ export default function Dashboard() {
     { icon: TrendingUp, children: "View Analytics" },
   ], [])
 
-  if (loading) {
+  if (authLoading || (user && loading)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />

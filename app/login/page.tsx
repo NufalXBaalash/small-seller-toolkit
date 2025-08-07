@@ -203,7 +203,8 @@ export default function LoginPage() {
                 variant="outline" 
                 className="w-full" 
                 onClick={async () => {
-                  await signOut()
+                  await signOut();
+                  router.push("/login");
                 }}
               >
                 Sign Out & Login as Different User
