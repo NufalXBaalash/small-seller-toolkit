@@ -299,15 +299,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-
+      // Clear local state first to prevent UI issues
       setUser(null)
       setUserProfile(null)
+      setLoading(false)
+      setIsInitialized(true)
+      
+      // Then attempt to sign out from Supabase
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.warn("Supabase signOut error (non-critical):", error)
+        // Don't throw error, just log it since we already cleared local state
+      }
+      
+      // Always redirect regardless of Supabase signOut success
       router.push("/")
     } catch (error) {
       console.error("Sign out error:", error)
-      throw error
+      // Even if there's an error, clear local state and redirect
+      setUser(null)
+      setUserProfile(null)
+      setLoading(false)
+      setIsInitialized(true)
+      router.push("/")
     }
   }, [router])
 

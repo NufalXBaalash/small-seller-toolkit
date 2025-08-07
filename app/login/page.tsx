@@ -203,8 +203,14 @@ export default function LoginPage() {
                 variant="outline" 
                 className="w-full" 
                 onClick={async () => {
-                  await signOut();
-                  router.push("/login");
+                  try {
+                    await signOut();
+                    router.push("/login");
+                  } catch (error) {
+                    console.warn("Sign out error:", error);
+                    // Even if signOut fails, redirect to login
+                    router.push("/login");
+                  }
                 }}
               >
                 Sign Out & Login as Different User
