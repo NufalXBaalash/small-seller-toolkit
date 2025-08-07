@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast"
 import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function LoginPage() {
+  // All hooks must be defined at the top, before any conditional returns
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -27,6 +28,18 @@ export default function LoginPage() {
 
   const { signIn, signOut, user, loading } = useAuth()
   const router = useRouter()
+
+  // Restore missing functions
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev)
+  }
+
+  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    toast({
+      title: "Coming Soon",
+      description: `${provider} login will be available soon.`,
+    })
+  }
 
   // Email validation
   const validateEmail = (email: string): boolean => {
@@ -155,7 +168,7 @@ export default function LoginPage() {
   // Check if Supabase environment variables are configured
   const supabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // If user is already logged in, show already logged in message
+  // --- Conditional returns after all hooks are defined ---
   if (user && typeof window !== 'undefined') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-sellio-secondary dark:bg-gray-900 p-4">
@@ -180,14 +193,12 @@ export default function LoginPage() {
                 {user.email}
               </p>
             </div>
-            
             <div className="flex flex-col gap-3">
               <Link href="/dashboard" className="w-full">
                 <Button className="w-full bg-sellio-primary hover:bg-sellio-accent text-white">
                   Go to Dashboard
                 </Button>
               </Link>
-              
               <Button 
                 variant="outline" 
                 className="w-full" 
@@ -197,7 +208,6 @@ export default function LoginPage() {
               >
                 Sign Out & Login as Different User
               </Button>
-              
               <Link href="/" className="w-full">
                 <Button variant="ghost" className="w-full">
                   Back to Home
@@ -210,7 +220,6 @@ export default function LoginPage() {
     )
   }
 
-  // Show configuration error if Supabase is not configured
   if (!supabaseConfigured) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-sellio-secondary dark:bg-gray-900 p-4">
@@ -268,20 +277,6 @@ export default function LoginPage() {
     )
   }
 
-
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword)
-  }
-
-  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
-    // Placeholder for social login implementation
-    toast({
-      title: "Coming Soon",
-      description: `${provider} login will be available soon.`,
-    })
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-sellio-secondary dark:bg-gray-900 p-4">
       <div className="absolute top-4 right-4">
@@ -304,7 +299,6 @@ export default function LoginPage() {
                 <p className="text-sm text-sellio-danger">{error}</p>
               </div>
             )}
-
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
               <div className="relative">
@@ -329,7 +323,6 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -363,7 +356,6 @@ export default function LoginPage() {
                 </p>
               )}
             </div>
-
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -384,7 +376,6 @@ export default function LoginPage() {
                 Forgot password?
               </Link>
             </div>
-
             <Button 
               type="submit" 
               className="w-full bg-sellio-primary hover:bg-sellio-accent text-white" 
@@ -401,7 +392,6 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-
           <div className="relative mt-6">
             <div className="absolute inset-0 flex items-center">
               <Separator />
@@ -410,7 +400,6 @@ export default function LoginPage() {
               <span className="bg-sellio-tertiary px-2 text-sellio-primary">Or continue with</span>
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-4 mt-6">
             <Button 
               variant="outline" 
@@ -450,7 +439,6 @@ export default function LoginPage() {
               Facebook
             </Button>
           </div>
-
           <div className="text-center text-sm mt-6 text-sellio-primary">
             {"Don't have an account? "}
             <Link 
