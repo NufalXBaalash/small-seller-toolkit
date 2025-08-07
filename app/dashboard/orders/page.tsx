@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Plus, Eye, Edit, Loader2, ShoppingCart, DollarSign, Calendar } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
+import { useRouter } from "next/navigation"
 
 interface Order {
   id: string
@@ -43,6 +44,7 @@ export default function OrdersPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const { user, loading } = useAuth();
+  const router = useRouter();
 
   const fetchOrders = async () => {
     if (!user?.id) return
@@ -68,10 +70,10 @@ export default function OrdersPage() {
   }, []);
 
   useEffect(() => {
-    if (!loading && user?.id) {
-      fetchOrders();
+    if (!loading && !user) {
+      router.push("/login");
     }
-  }, [user?.id, loading]);
+  }, [loading, user, router]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -134,7 +136,7 @@ export default function OrdersPage() {
     avgOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + o.total_amount, 0) / orders.length : 0
   }
 
-  if (pageLoading) {
+  if (loading || (!loading && !user)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -150,17 +152,6 @@ export default function OrdersPage() {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error Loading Orders</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <Button onClick={fetchOrders}>Try Again</Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (!loading && !user) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Session expired</h3>
-          <p className="text-gray-600 mb-4">Please <a href='/login' className='text-blue-600 underline'>login again</a>.</p>
         </div>
       </div>
     )

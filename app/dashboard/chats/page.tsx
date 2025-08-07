@@ -12,6 +12,7 @@ import { Search, Filter, MoreHorizontal, Phone, Video, Send, Paperclip, Smile, L
 import { toast } from "@/components/ui/use-toast"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 import { useDebounce } from "@/hooks/use-debounce"
+import { useRouter } from "next/navigation"
 
 interface Chat {
   id: string
@@ -190,6 +191,13 @@ export default function ChatsPage() {
   const [isSending, setIsSending] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [loading, user, router]);
 
   // Debounce search term to reduce filtering operations
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
@@ -303,18 +311,7 @@ export default function ChatsPage() {
     { text: "Payment Options", color: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100" },
   ], [])
 
-  if (!pageLoading && !user) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Session expired</h3>
-          <p className="text-gray-600 mb-4">Please <a href='/login' className='text-blue-600 underline'>login again</a>.</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (pageLoading) {
+  if (loading || (!loading && !user)) {
     return (
       <div className="flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
         <div className="flex items-center justify-center min-h-[400px]">

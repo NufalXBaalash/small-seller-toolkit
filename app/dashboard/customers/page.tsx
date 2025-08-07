@@ -13,6 +13,7 @@ import { Users, Search, Download, MessageSquare, Phone, Mail, Loader2, Plus, Edi
 import { toast } from "@/components/ui/use-toast"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 import { useDebounce } from "@/hooks/use-debounce"
+import { useRouter } from "next/navigation"
 
 interface Customer {
   id: string
@@ -199,6 +200,7 @@ export default function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const { user, loading } = useAuth();
+  const router = useRouter();
 
   // Debounce search term to reduce filtering operations
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
@@ -227,10 +229,10 @@ export default function CustomersPage() {
   });
 
   useEffect(() => {
-    if (!loading && user?.id) {
-      fetchCustomers();
+    if (!loading && !user) {
+      router.push("/login");
     }
-  }, [user?.id, loading]);
+  }, [loading, user, router]);
 
   useEffect(() => {
     clearCache();
@@ -334,7 +336,7 @@ export default function CustomersPage() {
     },
   ], [stats])
 
-  if (pageLoading) {
+  if (loading || (!loading && !user)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -350,17 +352,6 @@ export default function CustomersPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Customers</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button onClick={fetchCustomers}>Try Again</Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (!loading && !user) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Session expired</h3>
-          <p className="text-gray-600 mb-4">Please <a href='/login' className='text-blue-600 underline'>login again</a>.</p>
         </div>
       </div>
     )

@@ -24,6 +24,7 @@ import {
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Loader2, Calendar } from "lucide-react"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 import React, { useRef } from "react";
+import { useRouter } from "next/navigation"
 
 interface Order {
   id: string
@@ -58,6 +59,13 @@ export default function AnalyticsPage() {
   const { user, loading } = useAuth();
   const loadingTimeout = useRef<NodeJS.Timeout | null>(null);
   const [showLoadingError, setShowLoadingError] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [loading, user, router]);
 
   const fetchAnalytics = async () => {
     console.log('[AnalyticsPage] fetchAnalytics: called');
@@ -201,7 +209,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (pageLoading) {
+  if (loading || (!loading && !user)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -217,17 +225,6 @@ export default function AnalyticsPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Analytics</h3>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button onClick={fetchAnalytics}>Try Again</Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (!loading && !user) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">Session expired</h3>
-          <p className="text-gray-600 mb-4">Please <a href='/login' className='text-blue-600 underline'>login again</a>.</p>
         </div>
       </div>
     )
