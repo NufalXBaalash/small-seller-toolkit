@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchUserCustomers, createCustomer, updateCustomer, clearCache } from "@/lib/supabase"
+import { fetchUserCustomers, createCustomer, updateCustomer, clearCache, searchCustomers } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -211,7 +211,16 @@ export default function CustomersPage() {
     try {
       setPageLoading(true)
       setError(null)
-      const data = await fetchUserCustomers(user.id)
+      
+      let data
+      if (debouncedSearchTerm.trim()) {
+        // Use optimized search function when search term is provided
+        data = await searchCustomers(user.id, debouncedSearchTerm.trim())
+      } else {
+        // Use optimized pagination function for regular fetching
+        data = await fetchUserCustomers(user.id)
+      }
+      
       setCustomers(data)
     } catch (err) {
       console.error("Error fetching customers:", err)
@@ -219,7 +228,7 @@ export default function CustomersPage() {
     } finally {
       setPageLoading(false)
     }
-  }, [user?.id])
+  }, [user?.id, debouncedSearchTerm])
 
   // Use the visibility hook to refetch data when page becomes visible
   useRefetchOnVisibility(() => {

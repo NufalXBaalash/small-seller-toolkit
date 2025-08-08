@@ -95,9 +95,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             
             // Handle specific error cases
             if (error.code === "PGRST116") {
-              // Profile doesn't exist - this is okay for new users
-              console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), user may need to complete signup')
-              setUserProfile(null)
+              // Profile doesn't exist - this might be a new user or trigger failed
+              console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), attempting to create profile')
+              
+              // Try to create the profile manually
+              try {
+                const { data: userData } = await supabase.auth.getUser()
+                if (userData?.user) {
+                  const { error: createError } = await supabase.from("users").insert({
+                    id: userId,
+                    email: userData.user.email,
+                    first_name: userData.user.user_metadata?.first_name || userData.user.user_metadata?.firstName || '',
+                    last_name: userData.user.user_metadata?.last_name || userData.user.user_metadata?.lastName || '',
+                    business_name: userData.user.user_metadata?.business_name || userData.user.user_metadata?.businessName || '',
+                    phone_number: userData.user.user_metadata?.phone_number || userData.user.user_metadata?.phoneNumber || '',
+                  })
+                  
+                  if (createError) {
+                    console.error('[AuthContext] fetchUserProfile: Failed to create profile manually:', createError)
+                    setUserProfile(null)
+                  } else {
+                    console.log('[AuthContext] fetchUserProfile: Profile created manually')
+                    // Fetch the newly created profile
+                    const { data: newProfile, error: fetchError } = await supabase.from("users").select("*").eq("id", userId).single()
+                    if (fetchError) {
+                      console.error('[AuthContext] fetchUserProfile: Failed to fetch newly created profile:', fetchError)
+                      setUserProfile(null)
+                    } else {
+                      console.log('[AuthContext] fetchUserProfile: Newly created profile fetched:', newProfile)
+                      setUserProfile(newProfile)
+                    }
+                  }
+                } else {
+                  setUserProfile(null)
+                }
+              } catch (createError) {
+                console.error('[AuthContext] fetchUserProfile: Error creating profile manually:', createError)
+                setUserProfile(null)
+              }
               break;
             } else if (error.code === "42501") {
               // Permission denied - RLS policy issue

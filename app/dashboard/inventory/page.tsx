@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchUserProducts, updateProduct, deleteProduct, testDatabaseConnection, clearCache } from "@/lib/supabase"
+import { fetchUserProducts, updateProduct, deleteProduct, testDatabaseConnection, clearCache, searchProducts } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -249,7 +249,14 @@ export default function InventoryPage() {
       }
       
       console.log('[InventoryPage] fetchProducts: Before fetchUserProducts');
-      const data = await fetchUserProducts(user.id);
+      let data
+      if (debouncedSearchTerm.trim()) {
+        // Use optimized search function when search term is provided
+        data = await searchProducts(user.id, debouncedSearchTerm.trim())
+      } else {
+        // Use optimized pagination function for regular fetching
+        data = await fetchUserProducts(user.id)
+      }
       console.log('[InventoryPage] fetchProducts: Products fetched successfully:', data.length, 'products');
       setProducts(data);
     } catch (err) {
@@ -261,7 +268,7 @@ export default function InventoryPage() {
       if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
       console.log('[InventoryPage] fetchProducts: setPageLoading(false)');
     }
-  }, [user?.id]);
+  }, [user?.id, debouncedSearchTerm]);
 
   // Use the visibility hook to refetch data when page becomes visible
   useRefetchOnVisibility(() => {

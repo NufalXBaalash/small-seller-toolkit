@@ -18,54 +18,54 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    console.log("Fetching products for user:", user.id)
+    console.log("Fetching customers for user:", user.id)
 
-    // Get query parameters for pagination
+    // Get query parameters for pagination and search
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
     const search = searchParams.get('search') || ''
 
-    let products
+    let customers
     let error
 
     if (search) {
       // Use optimized search function
       const { data, error: searchError } = await supabase
-        .rpc('search_products', { 
+        .rpc('search_customers', { 
           search_term: search, 
           user_id_param: user.id 
         })
-      products = data
+      customers = data
       error = searchError
     } else {
       // Use optimized pagination function
       const { data, error: paginationError } = await supabase
-        .rpc('get_products_optimized', { 
+        .rpc('get_customers_optimized', { 
           user_id_param: user.id, 
           limit_param: limit, 
           offset_param: offset 
         })
-      products = data
+      customers = data
       error = paginationError
     }
 
     if (error) {
-      console.error("Error fetching products:", error)
-      return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 })
+      console.error("Error fetching customers:", error)
+      return NextResponse.json({ error: "Failed to fetch customers" }, { status: 500 })
     }
 
-    console.log("Successfully fetched", products?.length || 0, "products")
-    return NextResponse.json({ products: products || [] })
+    console.log("Successfully fetched", customers?.length || 0, "customers")
+    return NextResponse.json({ customers: customers || [] })
   } catch (error) {
-    console.error("Error in products GET:", error)
+    console.error("Error in customers GET:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("=== PRODUCTS API POST START ===")
+    console.log("=== CUSTOMERS API POST START ===")
     
     // Get the authenticated user from the Authorization header
     const authHeader = request.headers.get('authorization')
@@ -91,47 +91,45 @@ export async function POST(request: NextRequest) {
     console.log("User authenticated:", user.id)
 
     const body = await request.json()
-    const { name, sku, category, stock, price, description, image_url } = body
+    const { name, email, phone_number, platform, notes } = body
 
-    console.log("Creating product for user:", user.id)
-    console.log("Product data:", { name, sku, category, stock, price, description, image_url })
+    console.log("Creating customer for user:", user.id)
+    console.log("Customer data:", { name, email, phone_number, platform, notes })
 
     // Validate required fields
-    if (!name || !stock || stock < 0) {
+    if (!name) {
       console.log("Validation failed")
       return NextResponse.json({ 
-        error: "Name and stock are required. Stock must be non-negative." 
+        error: "Name is required." 
       }, { status: 400 })
     }
 
-    console.log("Attempting to insert product...")
+    console.log("Attempting to insert customer...")
     
-    // Create the product using optimized function
-    const { data: product, error } = await supabase
-      .from("products")
+    // Create the customer
+    const { data: customer, error } = await supabase
+      .from("customers")
       .insert({
         user_id: user.id,
         name,
-        sku,
-        category,
-        stock: parseInt(stock),
-        price: price ? parseFloat(price) : null,
-        description,
-        image_url,
+        email,
+        phone_number,
+        platform: platform || "direct",
+        notes,
         status: "active"
       })
       .select()
       .single()
 
     if (error) {
-      console.error("Error creating product:", error)
-      return NextResponse.json({ error: "Failed to create product" }, { status: 500 })
+      console.error("Error creating customer:", error)
+      return NextResponse.json({ error: "Failed to create customer" }, { status: 500 })
     }
 
-    console.log("Product created successfully:", product.id)
-    return NextResponse.json({ product })
+    console.log("Customer created successfully:", customer.id)
+    return NextResponse.json({ customer })
   } catch (error) {
-    console.error("Error in products POST:", error)
+    console.error("Error in customers POST:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
-} 
+}

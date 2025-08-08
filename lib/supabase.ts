@@ -29,23 +29,34 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 })
 
-// Simple in-memory cache for API responses
-const cache = new Map<string, { data: any; timestamp: number }>()
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+// Enhanced in-memory cache with TTL and size limits
+const cache = new Map<string, { data: any; timestamp: number; ttl: number }>()
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes default
+const MAX_CACHE_SIZE = 100 // Maximum number of cached items
 
 const getCachedData = (key: string) => {
   const cached = cache.get(key)
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+  if (cached && Date.now() - cached.timestamp < cached.ttl) {
     return cached.data
+  }
+  if (cached) {
+    cache.delete(key) // Remove expired cache
   }
   return null
 }
 
-const setCachedData = (key: string, data: any) => {
-  cache.set(key, { data, timestamp: Date.now() })
+const setCachedData = (key: string, data: any, ttl: number = CACHE_DURATION) => {
+  // Implement LRU cache eviction
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const firstKey = cache.keys().next().value
+    if (firstKey) {
+      cache.delete(firstKey)
+    }
+  }
+  cache.set(key, { data, timestamp: Date.now(), ttl })
 }
 
-// Dashboard data fetching utilities with caching
+// Optimized dashboard data fetching with new functions
 export const fetchUserDashboardData = async (userId: string) => {
   const cacheKey = `dashboard-${userId}`
   const cached = getCachedData(cacheKey)
@@ -54,66 +65,35 @@ export const fetchUserDashboardData = async (userId: string) => {
   }
 
   try {
-    const [orders, chats, customers, products, dailyStats] = await Promise.all([
-      supabase
-        .from("orders")
-        .select("total_amount, status, created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10),
-      
-      supabase
-        .from("chats")
-        .select("unread_count, status, last_message, created_at, platform")
-        .eq("user_id", userId)
-        .eq("status", "active")
-        .limit(10),
-      
-      supabase
-        .from("customers")
-        .select("id, name, status, created_at, total_orders, total_spent")
-        .eq("user_id", userId),
-      
-      supabase
-        .from("products")
-        .select("name, stock, status, price")
-        .eq("user_id", userId)
-        .lte("stock", 5)
-        .limit(5),
+    // Use the new optimized function for dashboard data
+    const { data: dashboardData, error } = await supabase
+      .rpc('get_user_dashboard_data', { user_id_param: userId })
 
-      supabase
-        .from("daily_stats")
-        .select("*")
-        .eq("user_id", userId)
-        .gte("date", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order("date", { ascending: false })
-    ])
+    if (error) {
+      console.error("Error fetching dashboard data:", error)
+      throw error
+    }
 
     const result = {
-      orders: orders.data || [],
-      chats: chats.data || [],
-      customers: customers.data || [],
-      products: products.data || [],
-      dailyStats: dailyStats.data || [],
-      errors: {
-        orders: orders.error,
-        chats: chats.error,
-        customers: customers.error,
-        products: products.error,
-        dailyStats: dailyStats.error
-      }
+      orders: dashboardData?.recent_orders || [],
+      chats: dashboardData?.active_chats || [],
+      customers: [], // Will be fetched separately if needed
+      products: dashboardData?.low_stock_products || [],
+      dailyStats: [],
+      errors: { dashboard: error }
     }
 
     setCachedData(cacheKey, result)
     return result
   } catch (error) {
-    console.error("Error fetching dashboard data:", error)
+    console.error("Error in fetchUserDashboardData:", error)
     throw error
   }
 }
 
-export const fetchUserCustomers = async (userId: string): Promise<Customer[]> => {
-  const cacheKey = `customers-${userId}`
+// Optimized customer fetching with pagination
+export const fetchUserCustomers = async (userId: string, limit: number = 50, offset: number = 0): Promise<Customer[]> => {
+  const cacheKey = `customers-${userId}-${limit}-${offset}`
   const cached = getCachedData(cacheKey)
   if (cached) {
     return cached
@@ -121,10 +101,11 @@ export const fetchUserCustomers = async (userId: string): Promise<Customer[]> =>
 
   try {
     const { data, error } = await supabase
-      .from("customers")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+      .rpc('get_customers_optimized', { 
+        user_id_param: userId, 
+        limit_param: limit, 
+        offset_param: offset 
+      })
 
     if (error) throw error
     
@@ -137,40 +118,34 @@ export const fetchUserCustomers = async (userId: string): Promise<Customer[]> =>
   }
 }
 
-export const fetchUserProducts = async (userId: string): Promise<Product[]> => {
-  const cacheKey = `products-${userId}`
+// Optimized product fetching with pagination
+export const fetchUserProducts = async (userId: string, limit: number = 50, offset: number = 0): Promise<Product[]> => {
+  const cacheKey = `products-${userId}-${limit}-${offset}`
   const cached = getCachedData(cacheKey)
   if (cached) {
     return cached
   }
 
   try {
-    console.log("Fetching products for user:", userId)
-    
     const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+      .rpc('get_products_optimized', { 
+        user_id_param: userId, 
+        limit_param: limit, 
+        offset_param: offset 
+      })
 
-    if (error) {
-      console.error("Supabase error fetching products:", error)
-      throw new Error(`Database error: ${error.message} (Code: ${error.code})`)
-    }
+    if (error) throw error
     
-    console.log("Products fetched successfully:", data?.length || 0, "products")
     const result = data || []
     setCachedData(cacheKey, result)
     return result
   } catch (error) {
     console.error("Error fetching products:", error)
-    if (error instanceof Error) {
-      throw new Error(`Failed to fetch products: ${error.message}`)
-    }
-    throw new Error("Failed to fetch products: Unknown error")
+    throw error
   }
 }
 
+// Optimized order fetching with new database functions
 export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
   const cacheKey = `orders-${userId}`
   const cached = getCachedData(cacheKey)
@@ -179,15 +154,61 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
   }
 
   try {
+    // Try to use optimized function first
+    try {
+      const { data, error } = await supabase
+        .rpc('get_orders_optimized', { user_id_param: userId })
+      
+      if (!error && data) {
+        const result = data || []
+        setCachedData(cacheKey, result)
+        return result
+      }
+    } catch (e) {
+      console.log('Optimized orders function not available, using fallback')
+    }
+
+    // Fallback to direct query with optimized select
     const { data, error } = await supabase
       .from("orders")
-      .select("*")
+      .select(`
+        id,
+        total_amount,
+        created_at,
+        status,
+        customer_id,
+        platform,
+        payment_status,
+        customers (
+          name,
+          email,
+          phone_number
+        ),
+        order_items (
+          quantity,
+          unit_price,
+          total_price,
+          products (
+            name,
+            sku
+          )
+        )
+      `)
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
 
     if (error) throw error
     
-    const result = data || []
+    // Transform the data to match the Order interface
+    const result = (data || []).map((order: any) => ({
+      ...order,
+      customers: Array.isArray(order.customers) ? order.customers[0] || null : order.customers,
+      order_items: order.order_items?.map((item: any) => ({
+        ...item,
+        products: Array.isArray(item.products) ? item.products[0] || null : item.products
+      })) || []
+    })) as Order[]
+    
     setCachedData(cacheKey, result)
     return result
   } catch (error) {
@@ -196,6 +217,7 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
   }
 }
 
+// Optimized analytics fetching with new database functions
 export const fetchUserAnalytics = async (userId: string): Promise<{
   orders: any[], 
   customers: any[], 
@@ -210,29 +232,93 @@ export const fetchUserAnalytics = async (userId: string): Promise<{
   }
 
   try {
+    // Use optimized functions where available, fallback to direct queries
     const [orders, customers, dailyStats, productStats] = await Promise.all([
-      supabase
-        .from("orders")
-        .select("id, total_amount, created_at, status")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false }),
+      // Use optimized order fetching if available, otherwise fallback
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .rpc('get_orders_optimized', { user_id_param: userId })
+          if (!error && data) return { data, error: null }
+        } catch (e) {
+          console.log('Optimized orders function not available, using fallback')
+        }
+        
+        // Fallback to direct query
+        return await supabase
+          .from("orders")
+          .select("id, total_amount, created_at, status")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+      })(),
 
-      supabase
-        .from("customers")
-        .select("id, created_at, total_orders, total_spent")
-        .eq("user_id", userId),
+      // Use optimized customer fetching
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .rpc('get_customers_optimized', { 
+              user_id_param: userId, 
+              limit_param: 1000, 
+              offset_param: 0 
+            })
+          if (!error && data) return { data, error: null }
+        } catch (e) {
+          console.log('Optimized customers function not available, using fallback')
+        }
+        
+        // Fallback to direct query
+        return await supabase
+          .from("customers")
+          .select("id, created_at, total_orders, total_spent")
+          .eq("user_id", userId)
+      })(),
 
-      supabase
-        .from("daily_stats")
-        .select("*")
-        .eq("user_id", userId)
-        .gte("date", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order("date", { ascending: true }),
+      // Use materialized view for daily stats if available
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .from("daily_stats_mv")
+            .select("*")
+            .eq("user_id", userId)
+            .gte("date", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+            .order("date", { ascending: true })
+          if (!error && data) return { data, error: null }
+        } catch (e) {
+          console.log('Materialized view not available, using fallback')
+        }
+        
+        // Fallback to direct query
+        return await supabase
+          .from("daily_stats")
+          .select("*")
+          .eq("user_id", userId)
+          .gte("date", new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+          .order("date", { ascending: true })
+      })(),
 
-      supabase
-        .from("order_items")
-        .select("quantity, total_price")
-        .order("created_at", { ascending: false })
+      // Use optimized product stats if available
+      (async () => {
+        try {
+          const { data, error } = await supabase
+            .rpc('get_product_stats', { user_id_param: userId })
+          if (!error && data) return { data, error: null }
+        } catch (e) {
+          console.log('Optimized product stats function not available, using fallback')
+        }
+        
+        // Fallback to direct query
+        return await supabase
+          .from("order_items")
+          .select(`
+            quantity, 
+            total_price,
+            products (
+              name,
+              sku
+            )
+          `)
+          .order("created_at", { ascending: false })
+      })()
     ])
 
     const result = {
@@ -256,6 +342,7 @@ export const fetchUserAnalytics = async (userId: string): Promise<{
   }
 }
 
+// Optimized chat fetching
 export const fetchUserChats = async (userId: string): Promise<Chat[]> => {
   const cacheKey = `chats-${userId}`
   const cached = getCachedData(cacheKey)
@@ -266,7 +353,15 @@ export const fetchUserChats = async (userId: string): Promise<Chat[]> => {
   try {
     const { data, error } = await supabase
       .from("chats")
-      .select("*")
+      .select(`
+        *,
+        customers (
+          id,
+          name,
+          email,
+          phone_number
+        )
+      `)
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
 
@@ -281,6 +376,7 @@ export const fetchUserChats = async (userId: string): Promise<Chat[]> => {
   }
 }
 
+// Optimized message fetching
 export const fetchChatMessages = async (chatId: string): Promise<Message[]> => {
   const cacheKey = `messages-${chatId}`
   const cached = getCachedData(cacheKey)
@@ -306,7 +402,7 @@ export const fetchChatMessages = async (chatId: string): Promise<Message[]> => {
   }
 }
 
-// Clear cache when data is modified
+// Enhanced cache clearing with pattern matching
 export const clearCache = (pattern?: string) => {
   if (pattern) {
     for (const key of cache.keys()) {
@@ -319,6 +415,7 @@ export const clearCache = (pattern?: string) => {
   }
 }
 
+// Optimized product creation with better error handling
 export const createProduct = async (userId: string, productData: {
   name: string
   sku?: string | null
@@ -340,6 +437,11 @@ export const createProduct = async (userId: string, productData: {
       .single()
 
     if (error) throw error
+    
+    // Clear related cache
+    clearCache(`products-${userId}`)
+    clearCache(`dashboard-${userId}`)
+    
     return data
   } catch (error) {
     console.error("Error creating product:", error)
@@ -347,16 +449,25 @@ export const createProduct = async (userId: string, productData: {
   }
 }
 
+// Optimized product update
 export const updateProduct = async (productId: string, productData: Partial<Product>) => {
   try {
     const { data, error } = await supabase
       .from("products")
-      .update(productData)
+      .update({
+        ...productData,
+        updated_at: new Date().toISOString()
+      })
       .eq("id", productId)
       .select()
       .single()
 
     if (error) throw error
+    
+    // Clear related cache
+    clearCache(`products-`)
+    clearCache(`dashboard-`)
+    
     return data
   } catch (error) {
     console.error("Error updating product:", error)
@@ -364,6 +475,7 @@ export const updateProduct = async (productId: string, productData: Partial<Prod
   }
 }
 
+// Optimized product deletion
 export const deleteProduct = async (productId: string) => {
   try {
     const { error } = await supabase
@@ -372,6 +484,11 @@ export const deleteProduct = async (productId: string) => {
       .eq("id", productId)
 
     if (error) throw error
+    
+    // Clear related cache
+    clearCache(`products-`)
+    clearCache(`dashboard-`)
+    
     return true
   } catch (error) {
     console.error("Error deleting product:", error)
@@ -379,6 +496,7 @@ export const deleteProduct = async (productId: string) => {
   }
 }
 
+// Optimized customer creation
 export const createCustomer = async (userId: string, customerData: {
   name: string
   email?: string | null
@@ -398,6 +516,11 @@ export const createCustomer = async (userId: string, customerData: {
       .single()
 
     if (error) throw error
+    
+    // Clear related cache
+    clearCache(`customers-${userId}`)
+    clearCache(`dashboard-${userId}`)
+    
     return data
   } catch (error) {
     console.error("Error creating customer:", error)
@@ -405,16 +528,25 @@ export const createCustomer = async (userId: string, customerData: {
   }
 }
 
+// Optimized customer update
 export const updateCustomer = async (customerId: string, customerData: Partial<Customer>) => {
   try {
     const { data, error } = await supabase
       .from("customers")
-      .update(customerData)
+      .update({
+        ...customerData,
+        updated_at: new Date().toISOString()
+      })
       .eq("id", customerId)
       .select()
       .single()
 
     if (error) throw error
+    
+    // Clear related cache
+    clearCache(`customers-`)
+    clearCache(`dashboard-`)
+    
     return data
   } catch (error) {
     console.error("Error updating customer:", error)
@@ -422,6 +554,7 @@ export const updateCustomer = async (customerId: string, customerData: Partial<C
   }
 }
 
+// Optimized order creation with transaction-like behavior
 export const createOrder = async (userId: string, orderData: {
   customer_id: string
   total_amount: number
@@ -436,18 +569,18 @@ export const createOrder = async (userId: string, orderData: {
   }>
 }) => {
   try {
+    // Start transaction by creating order first
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
         user_id: userId,
         customer_id: orderData.customer_id,
         total_amount: orderData.total_amount,
-        platform: orderData.platform,
+        platform: orderData.platform || 'manual',
         shipping_address: orderData.shipping_address,
         payment_method: orderData.payment_method,
         notes: orderData.notes,
-        status: "pending",
-        payment_status: "pending"
+        status: 'pending'
       })
       .select()
       .single()
@@ -455,20 +588,27 @@ export const createOrder = async (userId: string, orderData: {
     if (orderError) throw orderError
 
     // Create order items
-    const orderItems = orderData.items.map(item => ({
-      order_id: order.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      unit_price: item.unit_price,
-      total_price: item.quantity * item.unit_price
-    }))
+    if (orderData.items && orderData.items.length > 0) {
+      const orderItems = orderData.items.map(item => ({
+        order_id: order.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        total_price: item.quantity * item.unit_price
+      }))
 
-    const { error: itemsError } = await supabase
-      .from("order_items")
-      .insert(orderItems)
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItems)
 
-    if (itemsError) throw itemsError
+      if (itemsError) throw itemsError
+    }
 
+    // Clear related cache
+    clearCache(`orders-${userId}`)
+    clearCache(`customers-${userId}`)
+    clearCache(`dashboard-${userId}`)
+    
     return order
   } catch (error) {
     console.error("Error creating order:", error)
@@ -476,73 +616,88 @@ export const createOrder = async (userId: string, orderData: {
   }
 }
 
+// Enhanced database connection test
 export const testDatabaseConnection = async () => {
-  console.log('[testDatabaseConnection] called');
-  
-  // Retry configuration
-  const maxRetries = 3;
-  const baseTimeout = 15000; // 15 seconds base timeout
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`[testDatabaseConnection] Attempt ${attempt}/${maxRetries}`);
-      
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`Supabase connection timeout (attempt ${attempt})`)), baseTimeout)
-      );
-      
-      const { data, error } = await Promise.race([
-        supabase.from("users").select("id").limit(1),
-        timeoutPromise
-      ]);
-      
-      if (error) {
-        console.log(`[testDatabaseConnection] Attempt ${attempt} error:`, error);
-        
-        // If it's a permission error, that's actually good - it means we can connect
-        if (error.code === '42501' || error.message?.includes('permission')) {
-          console.log('[testDatabaseConnection] Permission error - connection successful, RLS working');
-          return { success: true, data: null, message: 'Connection successful (RLS active)' };
-        }
-        
-        // If it's a network error, retry
-        if (error.message?.includes('network') || error.message?.includes('timeout')) {
-          if (attempt < maxRetries) {
-            console.log(`[testDatabaseConnection] Network error, retrying in ${attempt * 1000}ms...`);
-            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-            continue;
-          }
-        }
-        
-        return { success: false, error: error.message };
-      }
-      
-      console.log(`[testDatabaseConnection] Attempt ${attempt} success:`, data);
-      return { success: true, data };
-      
-    } catch (error) {
-      console.log(`[testDatabaseConnection] Attempt ${attempt} exception:`, error);
-      
-      if (attempt < maxRetries) {
-        console.log(`[testDatabaseConnection] Retrying in ${attempt * 1000}ms...`);
-        await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-        continue;
-      }
-      
+  try {
+    const startTime = Date.now()
+    
+    // Test basic connection
+    const { data: testData, error: testError } = await supabase
+      .from("products")
+      .select("count")
+      .limit(1)
+
+    if (testError) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error"
-      };
+        error: testError.message,
+        code: testError.code,
+        responseTime: Date.now() - startTime
+      }
+    }
+
+    // Test optimized function
+    let functionTest = "Function not available"
+    try {
+      const { data: functionData, error: functionError } = await supabase
+        .rpc('get_user_dashboard_data', { user_id_param: '00000000-0000-0000-0000-000000000000' })
+      
+      if (!functionError) {
+        functionTest = "Function available"
+      }
+    } catch (error) {
+      functionTest = "Function not available"
+    }
+
+    return {
+      success: true,
+      message: "Database connection successful",
+      responseTime: Date.now() - startTime,
+      functionTest: functionTest
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+      responseTime: 0
     }
   }
-  
-  return {
-    success: false,
-    error: "All connection attempts failed"
-  };
-};
+}
 
-// Type definitions
+// Search functions using optimized database functions
+export const searchProducts = async (userId: string, searchTerm: string) => {
+  try {
+    const { data, error } = await supabase
+      .rpc('search_products', { 
+        search_term: searchTerm, 
+        user_id_param: userId 
+      })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error searching products:", error)
+    throw error
+  }
+}
+
+export const searchCustomers = async (userId: string, searchTerm: string) => {
+  try {
+    const { data, error } = await supabase
+      .rpc('search_customers', { 
+        search_term: searchTerm, 
+        user_id_param: userId 
+      })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error searching customers:", error)
+    throw error
+  }
+}
+
+// Interface definitions
 interface Chat {
   id: string
   platform: string
@@ -619,9 +774,12 @@ interface Order {
   }>
 }
 
+// Server-side client for API routes
 export const createServerClient = () => {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  })
 }
