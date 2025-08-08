@@ -23,26 +23,53 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Test Supabase connection
-    let connectionTest = { success: false, error: null }
+    // Test Supabase connection with detailed error reporting
+    let connectionTest = { success: false, error: null, details: null }
     try {
+      console.log('[test-env] Testing Supabase connection...')
+      
+      // Test 1: Basic connection
       const { data, error } = await supabase.from("users").select("count").limit(1)
-      connectionTest = { 
-        success: !error, 
-        error: error?.message || null 
+      
+      if (error) {
+        connectionTest = { 
+          success: false, 
+          error: error.message,
+          details: {
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          }
+        }
+      } else {
+        connectionTest = { 
+          success: true, 
+          error: null,
+          details: { data }
+        }
       }
     } catch (error) {
       connectionTest = { 
         success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: { type: 'exception' }
       }
+    }
+
+    // Additional environment info
+    const additionalInfo = {
+      timestamp: new Date().toISOString(),
+      userAgent: request.headers.get('user-agent'),
+      host: request.headers.get('host'),
+      region: process.env.VERCEL_REGION || 'unknown'
     }
 
     return NextResponse.json({ 
       success: true,
-      message: "Environment variables configured correctly",
+      message: "Environment check completed",
       envCheck,
-      connectionTest
+      connectionTest,
+      additionalInfo
     })
   } catch (error) {
     console.error("Env Check Error:", error)

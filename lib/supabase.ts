@@ -21,6 +21,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     params: {
       eventsPerSecond: 10
     }
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'sellio-web-app'
+    }
   }
 })
 
@@ -473,27 +478,68 @@ export const createOrder = async (userId: string, orderData: {
 
 export const testDatabaseConnection = async () => {
   console.log('[testDatabaseConnection] called');
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('Supabase connection timeout')), 8000)
-  );
-  try {
-    const { data, error } = await Promise.race([
-      supabase.from("users").select("id").limit(1),
-      timeoutPromise
-    ]);
-    if (error) {
-      console.log('[testDatabaseConnection] error:', error);
-      return { success: false, error: error.message };
+  
+  // Retry configuration
+  const maxRetries = 3;
+  const baseTimeout = 15000; // 15 seconds base timeout
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[testDatabaseConnection] Attempt ${attempt}/${maxRetries}`);
+      
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Supabase connection timeout (attempt ${attempt})`)), baseTimeout)
+      );
+      
+      const { data, error } = await Promise.race([
+        supabase.from("users").select("id").limit(1),
+        timeoutPromise
+      ]);
+      
+      if (error) {
+        console.log(`[testDatabaseConnection] Attempt ${attempt} error:`, error);
+        
+        // If it's a permission error, that's actually good - it means we can connect
+        if (error.code === '42501' || error.message?.includes('permission')) {
+          console.log('[testDatabaseConnection] Permission error - connection successful, RLS working');
+          return { success: true, data: null, message: 'Connection successful (RLS active)' };
+        }
+        
+        // If it's a network error, retry
+        if (error.message?.includes('network') || error.message?.includes('timeout')) {
+          if (attempt < maxRetries) {
+            console.log(`[testDatabaseConnection] Network error, retrying in ${attempt * 1000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+            continue;
+          }
+        }
+        
+        return { success: false, error: error.message };
+      }
+      
+      console.log(`[testDatabaseConnection] Attempt ${attempt} success:`, data);
+      return { success: true, data };
+      
+    } catch (error) {
+      console.log(`[testDatabaseConnection] Attempt ${attempt} exception:`, error);
+      
+      if (attempt < maxRetries) {
+        console.log(`[testDatabaseConnection] Retrying in ${attempt * 1000}ms...`);
+        await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        continue;
+      }
+      
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
+      };
     }
-    console.log('[testDatabaseConnection] success:', data);
-    return { success: true, data };
-  } catch (error) {
-    console.log('[testDatabaseConnection] exception:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Unknown error"
-    };
   }
+  
+  return {
+    success: false,
+    error: "All connection attempts failed"
+  };
 };
 
 // Type definitions

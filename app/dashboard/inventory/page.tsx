@@ -202,20 +202,52 @@ export default function InventoryPage() {
     loadingTimeout.current = setTimeout(() => {
       setShowLoadingError(true);
       console.error('[InventoryPage] fetchProducts: Loading timeout!');
-    }, 10000);
+    }, 20000); // Increased timeout to 20 seconds for production
+    
     try {
       if (!user?.id) {
         console.log('[InventoryPage] fetchProducts: No user, abort fetch');
         return;
       }
       setError(null);
+      
+      // Test database connection with retries
       console.log('[InventoryPage] fetchProducts: Before testDatabaseConnection');
-      const connectionTest = await testDatabaseConnection();
-      console.log('[InventoryPage] fetchProducts: After testDatabaseConnection', connectionTest);
-      if (!connectionTest.success) {
-        console.log('[InventoryPage] fetchProducts: Database connection failed', connectionTest.error);
-        throw new Error(`Database connection failed: ${connectionTest.error}`);
+      let connectionTest = null;
+      let connectionAttempts = 0;
+      const maxConnectionAttempts = 3;
+      
+      while (connectionAttempts < maxConnectionAttempts) {
+        connectionAttempts++;
+        console.log(`[InventoryPage] fetchProducts: Connection attempt ${connectionAttempts}/${maxConnectionAttempts}`);
+        
+        try {
+          connectionTest = await testDatabaseConnection();
+          console.log('[InventoryPage] fetchProducts: After testDatabaseConnection', connectionTest);
+          
+          if (connectionTest.success) {
+            break;
+          } else {
+            console.log(`[InventoryPage] fetchProducts: Connection attempt ${connectionAttempts} failed:`, connectionTest.error);
+            if (connectionAttempts < maxConnectionAttempts) {
+              console.log(`[InventoryPage] fetchProducts: Retrying connection in ${connectionAttempts * 1000}ms...`);
+              await new Promise(resolve => setTimeout(resolve, connectionAttempts * 1000));
+            }
+          }
+        } catch (connError) {
+          console.error(`[InventoryPage] fetchProducts: Connection attempt ${connectionAttempts} exception:`, connError);
+          if (connectionAttempts < maxConnectionAttempts) {
+            console.log(`[InventoryPage] fetchProducts: Retrying connection in ${connectionAttempts * 1000}ms...`);
+            await new Promise(resolve => setTimeout(resolve, connectionAttempts * 1000));
+          }
+        }
       }
+      
+      if (!connectionTest?.success) {
+        console.log('[InventoryPage] fetchProducts: All connection attempts failed');
+        throw new Error(`Database connection failed after ${maxConnectionAttempts} attempts: ${connectionTest?.error || 'Unknown error'}`);
+      }
+      
       console.log('[InventoryPage] fetchProducts: Before fetchUserProducts');
       const data = await fetchUserProducts(user.id);
       console.log('[InventoryPage] fetchProducts: Products fetched successfully:', data.length, 'products');

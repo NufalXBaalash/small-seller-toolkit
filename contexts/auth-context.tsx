@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileFetchInProgress.current = false
       setLoading(false)
       setIsInitialized(true)
-    }, 10000) // 10 second timeout
+    }, 15000) // Increased to 15 seconds for production
     
     try {
       console.log('[AuthContext] fetchUserProfile: Fetching profile for user:', userId)
@@ -81,28 +81,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
       
-      const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
+      // Retry logic for profile fetch
+      let lastError = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          console.log(`[AuthContext] fetchUserProfile: Attempt ${attempt}/3`);
+          
+          const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
 
-      if (error) {
-        console.error('[AuthContext] fetchUserProfile: Error fetching user profile:', error)
-        
-        // Handle specific error cases
-        if (error.code === "PGRST116") {
-          // Profile doesn't exist - this is okay for new users
-          console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), user may need to complete signup')
-          setUserProfile(null)
-        } else if (error.code === "42501") {
-          // Permission denied - RLS policy issue
-          console.error('[AuthContext] fetchUserProfile: Permission denied - RLS policy may be blocking access')
-          setUserProfile(null)
-        } else {
-          console.error('[AuthContext] fetchUserProfile: Unexpected error:', error)
-          setUserProfile(null)
+          if (error) {
+            console.error(`[AuthContext] fetchUserProfile: Attempt ${attempt} error:`, error)
+            lastError = error;
+            
+            // Handle specific error cases
+            if (error.code === "PGRST116") {
+              // Profile doesn't exist - this is okay for new users
+              console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), user may need to complete signup')
+              setUserProfile(null)
+              break;
+            } else if (error.code === "42501") {
+              // Permission denied - RLS policy issue
+              console.error('[AuthContext] fetchUserProfile: Permission denied - RLS policy may be blocking access')
+              setUserProfile(null)
+              break;
+            } else if (error.message?.includes('timeout') || error.message?.includes('network')) {
+              // Network/timeout error - retry
+              if (attempt < 3) {
+                console.log(`[AuthContext] fetchUserProfile: Network error, retrying in ${attempt * 1000}ms...`)
+                await new Promise(resolve => setTimeout(resolve, attempt * 1000))
+                continue;
+              }
+            }
+            
+            // For other errors, don't retry
+            setUserProfile(null)
+            break;
+          } else {
+            console.log('[AuthContext] fetchUserProfile: Profile fetched successfully:', data)
+            setUserProfile(data)
+            break;
+          }
+        } catch (error) {
+          console.error(`[AuthContext] fetchUserProfile: Attempt ${attempt} exception:`, error)
+          lastError = error;
+          
+          if (attempt < 3) {
+            console.log(`[AuthContext] fetchUserProfile: Exception, retrying in ${attempt * 1000}ms...`)
+            await new Promise(resolve => setTimeout(resolve, attempt * 1000))
+            continue;
+          }
         }
-      } else {
-        console.log('[AuthContext] fetchUserProfile: Profile fetched successfully:', data)
-        setUserProfile(data)
       }
+      
+      // If all attempts failed, set profile to null
+      if (lastError && !userProfile) {
+        console.error('[AuthContext] fetchUserProfile: All attempts failed, setting profile to null')
+        setUserProfile(null)
+      }
+      
     } catch (error) {
       console.error('[AuthContext] fetchUserProfile: Error:', error)
       setUserProfile(null)
@@ -118,7 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsInitialized(true)
       console.log('[AuthContext] fetchUserProfile: setLoading(false), setIsInitialized(true)')
     }
-  }, [])
+  }, [userProfile])
 
   // Fallback mechanism to ensure loading state is always resolved
   useEffect(() => {
