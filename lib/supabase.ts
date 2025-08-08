@@ -65,22 +65,113 @@ export const fetchUserDashboardData = async (userId: string) => {
   }
 
   try {
-    // Use the new optimized function for dashboard data
-    const { data: dashboardData, error } = await supabase
-      .rpc('get_user_dashboard_data', { user_id_param: userId })
+    // Try to use the new optimized function first
+    try {
+      const { data: dashboardData, error } = await supabase
+        .rpc('get_user_dashboard_data', { user_id_param: userId })
 
-    if (error) {
-      console.error("Error fetching dashboard data:", error)
-      throw error
+      if (!error && dashboardData) {
+        const result = {
+          orders: dashboardData?.recent_orders || [],
+          chats: dashboardData?.active_chats || [],
+          customers: [], // Will be fetched separately if needed
+          products: dashboardData?.low_stock_products || [],
+          dailyStats: [],
+          errors: { dashboard: error }
+        }
+
+        setCachedData(cacheKey, result)
+        return result
+      }
+    } catch (e) {
+      console.log('Optimized dashboard function not available, using fallback')
     }
 
+    // Fallback to direct queries
+    const [ordersResult, chatsResult, customersResult, productsResult] = await Promise.all([
+      supabase
+        .from("orders")
+        .select(`
+          id,
+          total_amount,
+          created_at,
+          status,
+          customers (
+            name,
+            email,
+            phone_number
+          )
+        `)
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(5),
+      
+      supabase
+        .from("chats")
+        .select(`
+          id,
+          platform,
+          last_message,
+          unread_count,
+          status,
+          created_at,
+          customers (
+            name,
+            email,
+            phone_number
+          )
+        `)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .limit(5),
+      
+      supabase
+        .from("customers")
+        .select(`
+          id,
+          name,
+          email,
+          phone_number,
+          platform,
+          total_orders,
+          total_spent,
+          status,
+          created_at
+        `)
+        .eq("user_id", userId)
+        .limit(5),
+      
+      supabase
+        .from("products")
+        .select(`
+          id,
+          name,
+          sku,
+          category,
+          stock,
+          price,
+          status,
+          description,
+          image_url
+        `)
+        .eq("user_id", userId)
+        .lte("stock", 5)
+        .gt("stock", 0)
+        .limit(5)
+    ])
+
     const result = {
-      orders: dashboardData?.recent_orders || [],
-      chats: dashboardData?.active_chats || [],
-      customers: [], // Will be fetched separately if needed
-      products: dashboardData?.low_stock_products || [],
+      orders: ordersResult.data || [],
+      chats: chatsResult.data || [],
+      customers: customersResult.data || [],
+      products: productsResult.data || [],
       dailyStats: [],
-      errors: { dashboard: error }
+      errors: { 
+        orders: ordersResult.error,
+        chats: chatsResult.error,
+        customers: customersResult.error,
+        products: productsResult.error
+      }
     }
 
     setCachedData(cacheKey, result)
@@ -100,12 +191,42 @@ export const fetchUserCustomers = async (userId: string, limit: number = 50, off
   }
 
   try {
+    // Try to use optimized function first
+    try {
+      const { data, error } = await supabase
+        .rpc('get_customers_optimized', { 
+          user_id_param: userId, 
+          limit_param: limit, 
+          offset_param: offset 
+        })
+
+      if (!error && data) {
+        const result = data || []
+        setCachedData(cacheKey, result)
+        return result
+      }
+    } catch (e) {
+      console.log('Optimized customers function not available, using fallback')
+    }
+
+    // Fallback to direct query
     const { data, error } = await supabase
-      .rpc('get_customers_optimized', { 
-        user_id_param: userId, 
-        limit_param: limit, 
-        offset_param: offset 
-      })
+      .from("customers")
+      .select(`
+        id,
+        name,
+        email,
+        phone_number,
+        platform,
+        total_orders,
+        total_spent,
+        status,
+        last_order_date,
+        created_at
+      `)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (error) throw error
     
@@ -127,12 +248,43 @@ export const fetchUserProducts = async (userId: string, limit: number = 50, offs
   }
 
   try {
+    // Try to use optimized function first
+    try {
+      const { data, error } = await supabase
+        .rpc('get_products_optimized', { 
+          user_id_param: userId, 
+          limit_param: limit, 
+          offset_param: offset 
+        })
+
+      if (!error && data) {
+        const result = data || []
+        setCachedData(cacheKey, result)
+        return result
+      }
+    } catch (e) {
+      console.log('Optimized products function not available, using fallback')
+    }
+
+    // Fallback to direct query
     const { data, error } = await supabase
-      .rpc('get_products_optimized', { 
-        user_id_param: userId, 
-        limit_param: limit, 
-        offset_param: offset 
-      })
+      .from("products")
+      .select(`
+        id,
+        name,
+        sku,
+        category,
+        stock,
+        price,
+        status,
+        description,
+        image_url,
+        created_at,
+        updated_at
+      `)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (error) throw error
     
@@ -173,6 +325,7 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
       .from("orders")
       .select(`
         id,
+        order_number,
         total_amount,
         created_at,
         status,
@@ -667,11 +820,40 @@ export const testDatabaseConnection = async () => {
 // Search functions using optimized database functions
 export const searchProducts = async (userId: string, searchTerm: string) => {
   try {
+    // Try to use optimized search function first
+    try {
+      const { data, error } = await supabase
+        .rpc('search_products', { 
+          search_term: searchTerm, 
+          user_id_param: userId 
+        })
+
+      if (!error && data) {
+        return data || []
+      }
+    } catch (e) {
+      console.log('Optimized search products function not available, using fallback')
+    }
+
+    // Fallback to direct query with search
     const { data, error } = await supabase
-      .rpc('search_products', { 
-        search_term: searchTerm, 
-        user_id_param: userId 
-      })
+      .from("products")
+      .select(`
+        id,
+        name,
+        sku,
+        category,
+        stock,
+        price,
+        status,
+        description,
+        image_url,
+        created_at,
+        updated_at
+      `)
+      .eq("user_id", userId)
+      .or(`name.ilike.%${searchTerm}%,sku.ilike.%${searchTerm}%,category.ilike.%${searchTerm}%`)
+      .order("name", { ascending: true })
 
     if (error) throw error
     return data || []
@@ -683,11 +865,39 @@ export const searchProducts = async (userId: string, searchTerm: string) => {
 
 export const searchCustomers = async (userId: string, searchTerm: string) => {
   try {
+    // Try to use optimized search function first
+    try {
+      const { data, error } = await supabase
+        .rpc('search_customers', { 
+          search_term: searchTerm, 
+          user_id_param: userId 
+        })
+
+      if (!error && data) {
+        return data || []
+      }
+    } catch (e) {
+      console.log('Optimized search customers function not available, using fallback')
+    }
+
+    // Fallback to direct query with search
     const { data, error } = await supabase
-      .rpc('search_customers', { 
-        search_term: searchTerm, 
-        user_id_param: userId 
-      })
+      .from("customers")
+      .select(`
+        id,
+        name,
+        email,
+        phone_number,
+        platform,
+        total_orders,
+        total_spent,
+        status,
+        last_order_date,
+        created_at
+      `)
+      .eq("user_id", userId)
+      .or(`name.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%,phone_number.ilike.%${searchTerm}%`)
+      .order("name", { ascending: true })
 
     if (error) throw error
     return data || []
@@ -752,6 +962,7 @@ interface Product {
 
 interface Order {
   id: string
+  order_number: string
   total_amount: number
   created_at: string
   status: string

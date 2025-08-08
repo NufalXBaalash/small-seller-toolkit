@@ -75,6 +75,12 @@ export default function OrdersPage() {
     }
   }, [loading, user, router]);
 
+  useEffect(() => {
+    if (!loading && user?.id) {
+      fetchOrders();
+    }
+  }, [user?.id, loading]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
@@ -137,6 +143,14 @@ export default function OrdersPage() {
   }
 
   if (loading || (!loading && !user)) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (pageLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -268,8 +282,27 @@ export default function OrdersPage() {
               <TableBody>
                 {filteredOrders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      {searchTerm ? "No orders found matching your search." : "No orders yet. Create your first order to get started."}
+                    <TableCell colSpan={8} className="text-center py-12">
+                      {searchTerm ? (
+                        <div>
+                          <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders found</h3>
+                          <p className="text-gray-600 mb-4">No orders match your search criteria.</p>
+                          <Button variant="outline" onClick={() => setSearchTerm("")}>
+                            Clear Search
+                          </Button>
+                        </div>
+                      ) : (
+                        <div>
+                          <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No orders yet</h3>
+                          <p className="text-gray-600 mb-4">Start by creating your first order to track sales and manage customer purchases.</p>
+                          <Button>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Order
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : (

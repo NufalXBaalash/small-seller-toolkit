@@ -41,13 +41,12 @@ interface DashboardStats {
   }>
 }
 
-// Memoized time ago function
+// Simplified time ago function
 const getTimeAgo = (dateString: string) => {
   try {
     const date = new Date(dateString)
     const now = new Date()
     
-    // Validate date
     if (isNaN(date.getTime())) {
       return "Unknown"
     }
@@ -64,13 +63,12 @@ const getTimeAgo = (dateString: string) => {
       return `${Math.floor(diffInMinutes / 1440)}d ago`
     }
   } catch (err) {
-    console.error("Error calculating time ago:", err)
     return "Unknown"
   }
 }
 
-// Memoized activity icon component
-const ActivityIcon = React.memo(({ type, status }: { type: string; status: string }) => {
+// Simplified activity icon component
+const ActivityIcon = React.memo(({ type }: { type: string }) => {
   switch (type) {
     case "order":
       return <ShoppingCart className="h-4 w-4" />
@@ -85,7 +83,7 @@ const ActivityIcon = React.memo(({ type, status }: { type: string; status: strin
 
 ActivityIcon.displayName = "ActivityIcon"
 
-// Memoized activity background color function
+// Simplified activity background color function
 const getActivityBgColor = (type: string) => {
   switch (type) {
     case "order":
@@ -99,7 +97,7 @@ const getActivityBgColor = (type: string) => {
   }
 }
 
-// Memoized stats cards component
+// Simplified stats cards component
 const StatsCard = React.memo(({ 
   title, 
   value, 
@@ -125,11 +123,11 @@ const StatsCard = React.memo(({
 
 StatsCard.displayName = "StatsCard"
 
-// Memoized activity item component
+// Simplified activity item component
 const ActivityItem = React.memo(({ activity }: { activity: DashboardStats['recentActivity'][0] }) => (
   <div className="flex items-center space-x-4">
     <div className={`p-2 rounded-full ${getActivityBgColor(activity.type)}`}>
-      <ActivityIcon type={activity.type} status={activity.status} />
+      <ActivityIcon type={activity.type} />
     </div>
     <div className="flex-1 space-y-1">
       <p className="text-sm font-medium leading-none">
@@ -147,7 +145,7 @@ const ActivityItem = React.memo(({ activity }: { activity: DashboardStats['recen
 
 ActivityItem.displayName = "ActivityItem"
 
-// Memoized quick action button component
+// Simplified quick action button component
 const QuickActionButton = React.memo(({ 
   icon: Icon, 
   children, 
@@ -192,103 +190,70 @@ export default function Dashboard() {
 
       const dashboardData = await fetchUserDashboardData(user.id)
       
-      // Extract data with fallbacks and better error handling
-      const { orders = [], chats = [], customers = [], products = [], dailyStats = [] } = dashboardData
+      // Simplified data extraction with safe defaults
+      const orders = dashboardData?.orders || []
+      const chats = dashboardData?.chats || []
+      const customers = dashboardData?.customers || []
+      const products = dashboardData?.products || []
 
-      // Calculate stats with null checks and error handling
-      const totalRevenue = orders.reduce((sum, order) => {
-        try {
-          const amount = order?.total_amount ? Number(order.total_amount) : 0
-          return sum + (isNaN(amount) ? 0 : amount)
-        } catch (err) {
-          console.warn('Error calculating order amount:', err)
-          return sum
-        }
+      // Calculate stats with safe defaults
+      const totalRevenue = orders.reduce((sum: number, order: any) => {
+        const amount = Number(order?.total_amount || 0)
+        return sum + (isNaN(amount) ? 0 : amount)
       }, 0)
 
       const totalOrders = orders.length
-      const activeChats = chats.filter((chat) => {
-        try {
-          return chat?.unread_count && chat.unread_count > 0
-        } catch (err) {
-          console.warn('Error checking chat unread count:', err)
-          return false
-        }
-      }).length
+      const activeChats = chats.filter((chat: any) => chat?.unread_count > 0).length
       const totalCustomers = customers.length
 
-      // Create recent activity with better error handling
-      const recentActivity: Array<{
-        id: string;
-        type: "order" | "message" | "alert";
-        title: string;
-        description: string;
-        time: string;
-        status: string;
-      }> = []
+      // Create simplified recent activity
+      const recentActivity: DashboardStats['recentActivity'] = []
 
-      // Add recent orders with error handling
-      try {
-        orders.slice(0, 2).forEach((order: any, index) => {
-          if (order) {
-            const customerName = Array.isArray(order.customers) 
-              ? order.customers[0]?.name || "Unknown Customer"
-              : (order.customers as { name?: string })?.name || "Unknown Customer"
-            const amount = order.total_amount ? Number(order.total_amount) : 0
-            const status = order.status || "unknown"
-            
-            recentActivity.push({
-              id: `order-${order.created_at || Date.now()}-${index}`,
-              type: "order" as const,
-              title: `New order from ${customerName}`,
-              description: `$${amount.toFixed(2)} - ${status}`,
-              time: getTimeAgo(order.created_at || new Date().toISOString()),
-              status: status,
-            })
-          }
-        })
-      } catch (err) {
-        console.warn('Error processing orders for activity:', err)
-      }
+      // Add recent orders (max 2)
+      orders.slice(0, 2).forEach((order: any, index: number) => {
+        if (order) {
+          const customerName = order.customers?.name || "Unknown Customer"
+          const amount = Number(order.total_amount || 0)
+          const status = order.status || "unknown"
+          
+          recentActivity.push({
+            id: `order-${order.id || index}`,
+            type: "order" as const,
+            title: `New order from ${customerName}`,
+            description: `$${amount.toFixed(2)} - ${status}`,
+            time: getTimeAgo(order.created_at || new Date().toISOString()),
+            status: status,
+          })
+        }
+      })
 
-      // Add recent messages with error handling
-      try {
-        chats.slice(0, 2).forEach((chat: any, index) => {
-          if (chat && chat.unread_count && chat.unread_count > 0) {
-            const customerName = Array.isArray(chat.customers) 
-              ? chat.customers[0]?.name || "Unknown Customer"
-              : (chat.customers as { name: string })?.name || "Unknown Customer"
-            
-            recentActivity.push({
-              id: `message-${chat.created_at || Date.now()}-${index}`,
-              type: "message" as const,
-              title: `New message from ${customerName}`,
-              description: chat.last_message || "New message received",
-              time: getTimeAgo(chat.created_at || new Date().toISOString()),
-              status: "unread",
-            })
-          }
-        })
-      } catch (err) {
-        console.warn('Error processing chats for activity:', err)
-      }
+      // Add recent messages (max 2)
+      chats.slice(0, 2).forEach((chat: any, index: number) => {
+        if (chat && chat.unread_count > 0) {
+          const customerName = chat.customers?.name || "Unknown Customer"
+          
+          recentActivity.push({
+            id: `message-${chat.id || index}`,
+            type: "message" as const,
+            title: `New message from ${customerName}`,
+            description: chat.last_message || "New message received",
+            time: getTimeAgo(chat.created_at || new Date().toISOString()),
+            status: "unread",
+          })
+        }
+      })
 
-      // Add low stock alerts with error handling
-      try {
-        products.slice(0, 1).forEach((product, index) => {
-          if (product && product.name) {
-            recentActivity.push({
-              id: `alert-${Date.now()}-${index}`,
-              type: "alert" as const,
-              title: "Low stock alert",
-              description: `${product.name} - ${product.stock || 0} left`,
-              time: "1h ago",
-              status: "warning",
-            })
-          }
+      // Add low stock alerts (max 1)
+      const lowStockProduct = products.find((p: any) => p.stock <= 5 && p.stock > 0)
+      if (lowStockProduct) {
+        recentActivity.push({
+          id: `alert-${lowStockProduct.id}`,
+          type: "alert" as const,
+          title: "Low stock alert",
+          description: `${lowStockProduct.name} - ${lowStockProduct.stock} left`,
+          time: "1h ago",
+          status: "warning",
         })
-      } catch (err) {
-        console.warn('Error processing products for activity:', err)
       }
 
       setStats({

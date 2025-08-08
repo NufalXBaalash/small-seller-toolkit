@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { fetchUserAnalytics } from "@/lib/supabase"
-import { testDatabaseConnection } from "@/lib/supabase";
 import { clearCache } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -23,7 +22,6 @@ import {
 } from "recharts"
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Users, Loader2, Calendar } from "lucide-react"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
-import React, { useRef } from "react";
 import { useRouter } from "next/navigation"
 
 interface Order {
@@ -57,8 +55,6 @@ export default function AnalyticsPage() {
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d")
   const { user, loading } = useAuth();
-  const loadingTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [showLoadingError, setShowLoadingError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -69,23 +65,12 @@ export default function AnalyticsPage() {
 
   const fetchAnalytics = async () => {
     console.log('[AnalyticsPage] fetchAnalytics: called');
-    setShowLoadingError(false);
     setPageLoading(true);
-    if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
-    loadingTimeout.current = setTimeout(() => {
-      setShowLoadingError(true);
-      console.error('[AnalyticsPage] fetchAnalytics: Loading timeout!');
-    }, 10000);
+    
     try {
       if (!user?.id) return;
       setError(null);
-      console.log('[AnalyticsPage] fetchAnalytics: Before testDatabaseConnection');
-      const connectionTest = await testDatabaseConnection();
-      console.log('[AnalyticsPage] fetchAnalytics: After testDatabaseConnection', connectionTest);
-      if (!connectionTest.success) {
-        console.log('[AnalyticsPage] fetchAnalytics: Database connection failed', connectionTest.error);
-        throw new Error(`Database connection failed: ${connectionTest.error}`);
-      }
+      
       console.log('[AnalyticsPage] fetchAnalytics: Before fetchUserAnalytics');
       const data = await fetchUserAnalytics(user.id);
       console.log('[AnalyticsPage] fetchAnalytics: Analytics fetched successfully');
@@ -98,7 +83,6 @@ export default function AnalyticsPage() {
       setError('Failed to load analytics. Please try again.');
     } finally {
       setPageLoading(false);
-      if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
       console.log('[AnalyticsPage] fetchAnalytics: setPageLoading(false)');
     }
   }
@@ -197,17 +181,6 @@ export default function AnalyticsPage() {
   const revenueGrowth = previousPeriodRevenue > 0 
     ? ((currentPeriodRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100 
     : 0
-
-  if (showLoadingError) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-red-600 mb-2">Loading took too long</h3>
-          <p className="text-gray-600 mb-4">Something went wrong. <button onClick={fetchAnalytics} className="text-blue-600 underline">Try Again</button></p>
-        </div>
-      </div>
-    );
-  }
 
   if (loading || (!loading && !user)) {
     return (

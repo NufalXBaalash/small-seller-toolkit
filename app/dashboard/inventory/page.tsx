@@ -1,8 +1,8 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
+import React, { useState, useEffect, useMemo, useCallback } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { fetchUserProducts, updateProduct, deleteProduct, testDatabaseConnection, clearCache, searchProducts } from "@/lib/supabase"
+import { fetchUserProducts, updateProduct, deleteProduct, clearCache, searchProducts } from "@/lib/supabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -181,8 +181,6 @@ export default function InventoryPage() {
   const [addProductModalOpen, setAddProductModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const { user, loading } = useAuth();
-  const loadingTimeout = useRef<NodeJS.Timeout | null>(null);
-  const [showLoadingError, setShowLoadingError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -196,13 +194,7 @@ export default function InventoryPage() {
 
   const fetchProducts = useCallback(async () => {
     console.log('[InventoryPage] fetchProducts: called');
-    setShowLoadingError(false);
     setPageLoading(true);
-    if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
-    loadingTimeout.current = setTimeout(() => {
-      setShowLoadingError(true);
-      console.error('[InventoryPage] fetchProducts: Loading timeout!');
-    }, 20000); // Increased timeout to 20 seconds for production
     
     try {
       if (!user?.id) {
@@ -210,43 +202,6 @@ export default function InventoryPage() {
         return;
       }
       setError(null);
-      
-      // Test database connection with retries
-      console.log('[InventoryPage] fetchProducts: Before testDatabaseConnection');
-      let connectionTest = null;
-      let connectionAttempts = 0;
-      const maxConnectionAttempts = 3;
-      
-      while (connectionAttempts < maxConnectionAttempts) {
-        connectionAttempts++;
-        console.log(`[InventoryPage] fetchProducts: Connection attempt ${connectionAttempts}/${maxConnectionAttempts}`);
-        
-        try {
-          connectionTest = await testDatabaseConnection();
-          console.log('[InventoryPage] fetchProducts: After testDatabaseConnection', connectionTest);
-          
-          if (connectionTest.success) {
-            break;
-          } else {
-            console.log(`[InventoryPage] fetchProducts: Connection attempt ${connectionAttempts} failed:`, connectionTest.error);
-            if (connectionAttempts < maxConnectionAttempts) {
-              console.log(`[InventoryPage] fetchProducts: Retrying connection in ${connectionAttempts * 1000}ms...`);
-              await new Promise(resolve => setTimeout(resolve, connectionAttempts * 1000));
-            }
-          }
-        } catch (connError) {
-          console.error(`[InventoryPage] fetchProducts: Connection attempt ${connectionAttempts} exception:`, connError);
-          if (connectionAttempts < maxConnectionAttempts) {
-            console.log(`[InventoryPage] fetchProducts: Retrying connection in ${connectionAttempts * 1000}ms...`);
-            await new Promise(resolve => setTimeout(resolve, connectionAttempts * 1000));
-          }
-        }
-      }
-      
-      if (!connectionTest?.success) {
-        console.log('[InventoryPage] fetchProducts: All connection attempts failed');
-        throw new Error(`Database connection failed after ${maxConnectionAttempts} attempts: ${connectionTest?.error || 'Unknown error'}`);
-      }
       
       console.log('[InventoryPage] fetchProducts: Before fetchUserProducts');
       let data
@@ -265,7 +220,6 @@ export default function InventoryPage() {
       setError(errorMessage);
     } finally {
       setPageLoading(false);
-      if (loadingTimeout.current) clearTimeout(loadingTimeout.current);
       console.log('[InventoryPage] fetchProducts: setPageLoading(false)');
     }
   }, [user?.id, debouncedSearchTerm]);
@@ -379,26 +333,6 @@ export default function InventoryPage() {
   ], [stats])
 
   if (loading || (!loading && !user)) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
-
-  if (showLoadingError) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <h3 className="text-lg font-semibold text-red-600 mb-2">Loading took too long</h3>
-          <p className="text-gray-600 mb-4">Something went wrong. <button onClick={fetchProducts} className="text-blue-600 underline">Try Again</button></p>
-        </div>
-      </div>
-    );
-  }
-
-  if (pageLoading) {
-    console.log('[InventoryPage] Render: Loading spinner')
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
