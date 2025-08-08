@@ -168,7 +168,6 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [loadingTimeout, setLoadingTimeout] = useState(false)
   const { user, userProfile, loading: authLoading } = useAuth()
   const router = useRouter();
 
@@ -179,18 +178,6 @@ export default function Dashboard() {
     }
   }, [authLoading, user, router]);
 
-  // Timeout mechanism to prevent infinite loading
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      if (loading && user) {
-        setLoadingTimeout(true)
-        setLoading(false)
-      }
-    }, 10000) // 10 second timeout
-
-    return () => clearTimeout(timeout)
-  }, [loading, user])
-
   const fetchDashboardData = useCallback(async () => {
     if (!user?.id) {
       setLoading(false)
@@ -200,66 +187,54 @@ export default function Dashboard() {
     try {
       setLoading(true)
       setError(null)
-      setLoadingTimeout(false)
 
       const dashboardData = await fetchUserDashboardData(user.id)
       
-      // Simplified data extraction with safe defaults
+      // Quick stats calculation
       const orders = dashboardData?.orders || []
       const chats = dashboardData?.chats || []
       const customers = dashboardData?.customers || []
       const products = dashboardData?.products || []
 
-      // Calculate stats with safe defaults
-      const totalRevenue = orders.reduce((sum: number, order: any) => {
-        const amount = Number(order?.total_amount || 0)
-        return sum + (isNaN(amount) ? 0 : amount)
-      }, 0)
-
+      // Fast stats calculation
+      const totalRevenue = orders.reduce((sum, order) => sum + (Number(order?.total_amount) || 0), 0)
       const totalOrders = orders.length
-      const activeChats = chats.filter((chat: any) => chat?.unread_count > 0).length
+      const activeChats = chats.filter(chat => chat?.unread_count > 0).length
       const totalCustomers = customers.length
 
-      // Create simplified recent activity
+      // Quick recent activity (max 3 items)
       const recentActivity: DashboardStats['recentActivity'] = []
-
-      // Add recent orders (max 2)
-      orders.slice(0, 2).forEach((order: any, index: number) => {
+      
+      // Add orders first (max 2)
+      orders.slice(0, 2).forEach((order, index) => {
         if (order) {
-          const customerName = order.customers?.name || "Unknown Customer"
-          const amount = Number(order.total_amount || 0)
-          const status = order.status || "unknown"
-          
           recentActivity.push({
             id: `order-${order.id || index}`,
             type: "order" as const,
-            title: `New order from ${customerName}`,
-            description: `$${amount.toFixed(2)} - ${status}`,
+            title: `New order from ${order.customers?.name || "Customer"}`,
+            description: `$${Number(order.total_amount || 0).toFixed(2)} - ${order.status || "pending"}`,
             time: getTimeAgo(order.created_at || new Date().toISOString()),
-            status: status,
+            status: order.status || "pending",
           })
         }
       })
 
-      // Add recent messages (max 2)
-      chats.slice(0, 2).forEach((chat: any, index: number) => {
-        if (chat && chat.unread_count > 0) {
-          const customerName = chat.customers?.name || "Unknown Customer"
-          
-          recentActivity.push({
-            id: `message-${chat.id || index}`,
-            type: "message" as const,
-            title: `New message from ${customerName}`,
-            description: chat.last_message || "New message received",
-            time: getTimeAgo(chat.created_at || new Date().toISOString()),
-            status: "unread",
-          })
-        }
-      })
+      // Add one unread chat if available
+      const unreadChat = chats.find(chat => chat?.unread_count > 0)
+      if (unreadChat && recentActivity.length < 3) {
+        recentActivity.push({
+          id: `message-${unreadChat.id}`,
+          type: "message" as const,
+          title: `New message from ${unreadChat.customers?.name || "Customer"}`,
+          description: unreadChat.last_message || "New message received",
+          time: getTimeAgo(unreadChat.created_at || new Date().toISOString()),
+          status: "unread",
+        })
+      }
 
-      // Add low stock alerts (max 1)
-      const lowStockProduct = products.find((p: any) => p.stock <= 5 && p.stock > 0)
-      if (lowStockProduct) {
+      // Add one low stock alert if available
+      const lowStockProduct = products.find(p => p.stock <= 5 && p.stock > 0)
+      if (lowStockProduct && recentActivity.length < 3) {
         recentActivity.push({
           id: `alert-${lowStockProduct.id}`,
           type: "alert" as const,
@@ -290,16 +265,16 @@ export default function Dashboard() {
   useRefetchOnVisibility(fetchDashboardData)
 
   useEffect(() => {
-    if (user && !authLoading) {
+    if (user?.id && !authLoading) {
       fetchDashboardData()
     }
-  }, [user, authLoading, fetchDashboardData])
+  }, [user?.id, authLoading, fetchDashboardData])
 
   // Memoized stats cards data
   const statsCards = useMemo(() => [
     {
       title: "Total Revenue",
-      value: `$${stats?.totalRevenue.toFixed(2) || "0.00"}`,
+      value: `$${(stats?.totalRevenue || 0).toFixed(2)}`,
       subtitle: "+20.1% from last month",
       icon: DollarSign,
     },
@@ -321,7 +296,7 @@ export default function Dashboard() {
       subtitle: "+201 since last month",
       icon: Users,
     },
-  ], [stats])
+  ], [stats?.totalRevenue, stats?.totalOrders, stats?.activeChats, stats?.totalCustomers])
 
   // Memoized quick actions
   const quickActions = useMemo(() => [
@@ -344,6 +319,77 @@ export default function Dashboard() {
     return null // Let the useEffect handle redirect
   }
 
+  // Show skeleton loading while fetching data
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="h-9 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Recent Activity Skeleton */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <Card className="col-span-4">
+            <CardHeader>
+              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center space-x-4">
+                    <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    </div>
+                    <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-3">
+            <CardHeader>
+              <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-9 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -352,19 +398,6 @@ export default function Dashboard() {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error Loading Dashboard</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <Button onClick={fetchDashboardData}>Try Again</Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (loadingTimeout) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-orange-500 dark:text-orange-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Loading Timeout</h3>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">Dashboard is taking longer than expected to load. Please try again.</p>
-          <Button onClick={fetchDashboardData}>Retry</Button>
         </div>
       </div>
     )

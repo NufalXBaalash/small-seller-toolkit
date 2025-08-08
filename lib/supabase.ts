@@ -99,7 +99,7 @@ export const fetchUserDashboardData = async (userId: string, retryCount = 0): Pr
 
     console.log('[fetchUserDashboardData] Using fallback queries')
     
-    // Fallback to direct queries
+    // Optimized fallback queries - fetch only what's needed for dashboard
     const [ordersResult, chatsResult, customersResult, productsResult] = await Promise.all([
       supabase
         .from("orders")
@@ -109,14 +109,12 @@ export const fetchUserDashboardData = async (userId: string, retryCount = 0): Pr
           created_at,
           status,
           customers (
-            name,
-            email,
-            phone_number
+            name
           )
         `)
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(5),
+        .limit(3), // Only need 3 for dashboard
       
       supabase
         .from("chats")
@@ -128,14 +126,12 @@ export const fetchUserDashboardData = async (userId: string, retryCount = 0): Pr
           status,
           created_at,
           customers (
-            name,
-            email,
-            phone_number
+            name
           )
         `)
         .eq("user_id", userId)
         .eq("status", "active")
-        .limit(5),
+        .limit(3), // Only need 3 for dashboard
       
       supabase
         .from("customers")
@@ -151,25 +147,19 @@ export const fetchUserDashboardData = async (userId: string, retryCount = 0): Pr
           created_at
         `)
         .eq("user_id", userId)
-        .limit(5),
+        .limit(5), // Only need 5 for dashboard
       
       supabase
         .from("products")
         .select(`
           id,
           name,
-          sku,
-          category,
-          stock,
-          price,
-          status,
-          description,
-          image_url
+          stock
         `)
         .eq("user_id", userId)
         .lte("stock", 5)
         .gt("stock", 0)
-        .limit(5)
+        .limit(3) // Only need 3 for dashboard
     ])
 
     console.log('[fetchUserDashboardData] Fallback queries completed')
