@@ -168,6 +168,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
   const { user, userProfile, loading: authLoading } = useAuth()
   const router = useRouter();
 
@@ -178,6 +179,18 @@ export default function Dashboard() {
     }
   }, [authLoading, user, router]);
 
+  // Timeout mechanism to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (loading && user) {
+        setLoadingTimeout(true)
+        setLoading(false)
+      }
+    }, 10000) // 10 second timeout
+
+    return () => clearTimeout(timeout)
+  }, [loading, user])
+
   const fetchDashboardData = useCallback(async () => {
     if (!user?.id) {
       setLoading(false)
@@ -187,6 +200,7 @@ export default function Dashboard() {
     try {
       setLoading(true)
       setError(null)
+      setLoadingTimeout(false)
 
       const dashboardData = await fetchUserDashboardData(user.id)
       
@@ -318,12 +332,16 @@ export default function Dashboard() {
     { icon: TrendingUp, children: "View Analytics" },
   ], [])
 
-  if (authLoading || (user && loading)) {
+  if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
+  }
+
+  if (!user) {
+    return null // Let the useEffect handle redirect
   }
 
   if (error) {
@@ -334,6 +352,19 @@ export default function Dashboard() {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error Loading Dashboard</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
           <Button onClick={fetchDashboardData}>Try Again</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (loadingTimeout) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-orange-500 dark:text-orange-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Loading Timeout</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Dashboard is taking longer than expected to load. Please try again.</p>
+          <Button onClick={fetchDashboardData}>Retry</Button>
         </div>
       </div>
     )

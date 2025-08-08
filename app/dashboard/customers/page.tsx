@@ -351,12 +351,16 @@ export default function CustomersPage() {
     },
   ], [stats])
 
-  if (loading || (!loading && !user)) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
+  }
+
+  if (!user) {
+    return null // Let the useEffect handle redirect
   }
 
   if (pageLoading) {

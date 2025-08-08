@@ -18,7 +18,7 @@ interface Order {
   order_number: string
   total_amount: number
   status: string
-  payment_status: string
+  payment_status?: string
   platform?: string
   created_at: string
   customer_id: string
@@ -142,12 +142,16 @@ export default function OrdersPage() {
     avgOrderValue: orders.length > 0 ? orders.reduce((sum, o) => sum + o.total_amount, 0) / orders.length : 0
   }
 
-  if (loading || (!loading && !user)) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
+  }
+
+  if (!user) {
+    return null // Let the useEffect handle redirect
   }
 
   if (pageLoading) {
@@ -342,8 +346,8 @@ export default function OrdersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge className={getPaymentStatusColor(order.payment_status)}>
-                          {order.payment_status}
+                        <Badge className={getPaymentStatusColor(order.payment_status || "")}>
+                          {order.payment_status || "N/A"}
                         </Badge>
                       </TableCell>
                       <TableCell>

@@ -57,7 +57,14 @@ const setCachedData = (key: string, data: any, ttl: number = CACHE_DURATION) => 
 }
 
 // Optimized dashboard data fetching with new functions
-export const fetchUserDashboardData = async (userId: string) => {
+export const fetchUserDashboardData = async (userId: string, retryCount = 0): Promise<{
+  orders: any[]
+  chats: any[]
+  customers: any[]
+  products: any[]
+  dailyStats: any[]
+  errors: any
+}> => {
   const cacheKey = `dashboard-${userId}`
   const cached = getCachedData(cacheKey)
   if (cached) {
@@ -65,12 +72,15 @@ export const fetchUserDashboardData = async (userId: string) => {
   }
 
   try {
+    console.log('[fetchUserDashboardData] Starting fetch for user:', userId, 'retry:', retryCount)
+    
     // Try to use the new optimized function first
     try {
       const { data: dashboardData, error } = await supabase
         .rpc('get_user_dashboard_data', { user_id_param: userId })
 
       if (!error && dashboardData) {
+        console.log('[fetchUserDashboardData] Optimized function succeeded')
         const result = {
           orders: dashboardData?.recent_orders || [],
           chats: dashboardData?.active_chats || [],
@@ -84,9 +94,11 @@ export const fetchUserDashboardData = async (userId: string) => {
         return result
       }
     } catch (e) {
-      console.log('Optimized dashboard function not available, using fallback')
+      console.log('[fetchUserDashboardData] Optimized dashboard function not available, using fallback:', e)
     }
 
+    console.log('[fetchUserDashboardData] Using fallback queries')
+    
     // Fallback to direct queries
     const [ordersResult, chatsResult, customersResult, productsResult] = await Promise.all([
       supabase
@@ -160,6 +172,8 @@ export const fetchUserDashboardData = async (userId: string) => {
         .limit(5)
     ])
 
+    console.log('[fetchUserDashboardData] Fallback queries completed')
+
     const result = {
       orders: ordersResult.data || [],
       chats: chatsResult.data || [],
@@ -177,7 +191,14 @@ export const fetchUserDashboardData = async (userId: string) => {
     setCachedData(cacheKey, result)
     return result
   } catch (error) {
-    console.error("Error in fetchUserDashboardData:", error)
+    console.error("[fetchUserDashboardData] Error:", error)
+    
+    // Retry once if it's the first attempt
+    if (retryCount === 0) {
+      console.log('[fetchUserDashboardData] Retrying...')
+      return fetchUserDashboardData(userId, retryCount + 1)
+    }
+    
     throw error
   }
 }
