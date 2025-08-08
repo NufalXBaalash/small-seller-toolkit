@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { supabase } from "@/lib/supabase"
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,14 +18,31 @@ export async function GET(request: NextRequest) {
     if (missingVars.length > 0) {
       return NextResponse.json({ 
         error: "Missing environment variables",
-        missing: missingVars
+        missing: missingVars,
+        envCheck
       }, { status: 500 })
+    }
+
+    // Test Supabase connection
+    let connectionTest = { success: false, error: null }
+    try {
+      const { data, error } = await supabase.from("users").select("count").limit(1)
+      connectionTest = { 
+        success: !error, 
+        error: error?.message || null 
+      }
+    } catch (error) {
+      connectionTest = { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      }
     }
 
     return NextResponse.json({ 
       success: true,
       message: "Environment variables configured correctly",
-      envCheck
+      envCheck,
+      connectionTest
     })
   } catch (error) {
     console.error("Env Check Error:", error)

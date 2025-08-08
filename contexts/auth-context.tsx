@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { createContext, useContext, useEffect, useState, useMemo, useCallback } from "react"
+import { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from "react"
 import type { User } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import { useRouter } from "next/navigation"
@@ -43,20 +43,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [isInitialized, setIsInitialized] = useState(false)
   const router = useRouter()
+  
+  // Ref to track if a profile fetch is in progress
+  const profileFetchInProgress = useRef(false)
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Memoized fetchUserProfile function to prevent unnecessary re-renders
   const fetchUserProfile = useCallback(async (userId: string) => {
+    // Prevent multiple simultaneous profile fetches
+    if (profileFetchInProgress.current) {
+      console.log('[AuthContext] fetchUserProfile: Already in progress, skipping')
+      return
+    }
+
+    profileFetchInProgress.current = true
+    
+    // Set a timeout to prevent infinite loading
+    if (loadingTimeoutRef.current) {
+      clearTimeout(loadingTimeoutRef.current)
+    }
+    
+    loadingTimeoutRef.current = setTimeout(() => {
+      console.warn('[AuthContext] fetchUserProfile: Timeout reached, forcing loading to false')
+      profileFetchInProgress.current = false
+      setLoading(false)
+      setIsInitialized(true)
+    }, 10000) // 10 second timeout
+    
     try {
       console.log('[AuthContext] fetchUserProfile: Fetching profile for user:', userId)
+      
+      // First, check if we have a valid session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        console.warn('[AuthContext] fetchUserProfile: No active session found')
+        setUserProfile(null)
+        return
+      }
+      
       const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
 
       if (error) {
         console.error('[AuthContext] fetchUserProfile: Error fetching user profile:', error)
-        // If profile doesn't exist (PGRST116), that's okay - user might need to complete signup or trigger hasn't fired yet
-        if (error.code !== "PGRST116") {
+        
+        // Handle specific error cases
+        if (error.code === "PGRST116") {
+          // Profile doesn't exist - this is okay for new users
+          console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), user may need to complete signup')
+          setUserProfile(null)
+        } else if (error.code === "42501") {
+          // Permission denied - RLS policy issue
+          console.error('[AuthContext] fetchUserProfile: Permission denied - RLS policy may be blocking access')
+          setUserProfile(null)
+        } else {
           console.error('[AuthContext] fetchUserProfile: Unexpected error:', error)
+          setUserProfile(null)
         }
-        setUserProfile(null) // Ensure profile is null if not found or error
       } else {
         console.log('[AuthContext] fetchUserProfile: Profile fetched successfully:', data)
         setUserProfile(data)
@@ -65,47 +107,99 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('[AuthContext] fetchUserProfile: Error:', error)
       setUserProfile(null)
     } finally {
+      // Clear the timeout since we completed successfully
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+      
+      profileFetchInProgress.current = false
       setLoading(false)
       setIsInitialized(true)
       console.log('[AuthContext] fetchUserProfile: setLoading(false), setIsInitialized(true)')
     }
   }, [])
 
-  // Handle page visibility changes
+  // Fallback mechanism to ensure loading state is always resolved
   useEffect(() => {
+    const fallbackTimeout = setTimeout(() => {
+      if (loading && isInitialized) {
+        console.warn('[AuthContext] Fallback timeout: Forcing loading to false after 15 seconds')
+        setLoading(false)
+        setIsInitialized(true)
+      }
+    }, 15000) // 15 second fallback
+
+    return () => {
+      clearTimeout(fallbackTimeout)
+    }
+  }, [loading, isInitialized])
+
+  // Additional safety check for edge cases
+  useEffect(() => {
+    // If we have a user but no profile after 5 seconds, assume profile doesn't exist
+    if (user && !userProfile && !loading && isInitialized) {
+      const profileTimeout = setTimeout(() => {
+        console.log('[AuthContext] User exists but no profile after 5s, assuming profile is null')
+        setUserProfile(null)
+      }, 5000)
+
+      return () => clearTimeout(profileTimeout)
+    }
+  }, [user, userProfile, loading, isInitialized])
+
+  // Handle page visibility changes with debouncing
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout | null = null
+    
     const handleVisibilityChange = () => {
       if (!document.hidden && isInitialized) {
         console.log('[AuthContext] visibilitychange: Page became visible, refreshing auth state')
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          console.log('[AuthContext] visibilitychange: getSession result:', session)
-          if (session?.user && !user) {
-            setUser(session.user)
-            fetchUserProfile(session.user.id)
-          } else if (!session?.user && user) {
-            // User was logged out while tab was inactive
-            setUser(null)
-            setUserProfile(null)
-            setLoading(false)
-            setIsInitialized(true)
-          } else if (!session?.user && !user) {
-            // No user in session and already logged out
-            setLoading(false)
-            setIsInitialized(true)
-          }
-        })
+        
+        // Debounce the visibility change to prevent multiple rapid calls
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+        }
+        
+        timeoutId = setTimeout(() => {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            console.log('[AuthContext] visibilitychange: getSession result:', session)
+            if (session?.user && !user) {
+              setUser(session.user)
+              fetchUserProfile(session.user.id)
+            } else if (!session?.user && user) {
+              // User was logged out while tab was inactive
+              setUser(null)
+              setUserProfile(null)
+              setLoading(false)
+              setIsInitialized(true)
+            } else if (!session?.user && !user) {
+              // No user in session and already logged out
+              setLoading(false)
+              setIsInitialized(true)
+            }
+          })
+        }, 100) // 100ms debounce
       }
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
     }
   }, [isInitialized, user, fetchUserProfile])
 
   useEffect(() => {
+    let isMounted = true
+    
     // Get initial session
     console.log('[AuthContext] useEffect: Get initial session')
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return
+      
       console.log('[AuthContext] supabase.auth.getSession result:', session)
       setUser(session?.user ?? null)
       if (session?.user) {
@@ -120,6 +214,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return
+      
       console.log('[AuthContext] onAuthStateChange:', event, session?.user?.id)
       setUser(session?.user ?? null)
 
@@ -138,7 +234,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsInitialized(true)
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+      // Clear any pending timeouts
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+    }
   }, [fetchUserProfile])
 
   const signUp = useCallback(async (email: string, password: string, userData: SignUpData) => {
@@ -158,18 +262,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       })
 
-      if (error) {
-        console.error("Signup error:", error)
-        throw error
+      if (error) throw error
+
+      if (data.user) {
+        console.log("User created successfully:", data.user.id)
+        // Profile will be created by the database trigger
+        // We'll fetch it in the onAuthStateChange handler
       }
-
-      console.log("Signup successful:", data)
-
-      // The public.users profile is now created by the database trigger (on_auth_user_created)
-      // We don't need to manually call createUserProfile here for the initial insert.
-      // The auth state change listener will fetch the profile once it's created.
     } catch (error) {
-      console.error("Sign up error:", error)
+      console.error("Signup error:", error)
       throw error
     }
   }, [])
@@ -227,44 +328,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       console.log("User profile created/updated successfully")
-
-      // Create default business if business name provided and not already exists
-      if (userData.businessName) {
-        console.log("Checking/creating business profile")
-        const { data: existingBusiness, error: fetchBusinessError } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("user_id", user.id)
-          .single()
-
-        if (fetchBusinessError && fetchBusinessError.code !== "PGRST116") {
-          console.error("Error checking for existing business profile:", fetchBusinessError)
-        }
-
-        if (!existingBusiness) {
-          const { error: businessError } = await supabase.from("businesses").insert({
-            user_id: user.id,
-            name: userData.businessName,
-            phone_number: userData.phoneNumber,
-          })
-
-          if (businessError) {
-            console.error("Error creating business profile:", businessError)
-          } else {
-            console.log("Business profile created successfully")
-          }
-        } else {
-          console.log("Business profile already exists, skipping creation.")
-        }
-      }
-
-      // Refresh the profile
-      await fetchUserProfile(user.id)
     } catch (error) {
-      console.error("Error in createUserProfile:", error)
+      console.error("Error creating/updating user profile:", error)
       throw error
     }
-  }, [fetchUserProfile])
+  }, [])
 
   const signIn = useCallback(async (email: string, password: string, persistSession: boolean = true) => {
     try {
@@ -272,9 +340,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-        options: {
-          persistSession,
-        },
       })
       if (error) throw error
       console.log("Sign in successful")
