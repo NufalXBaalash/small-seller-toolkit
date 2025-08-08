@@ -311,14 +311,111 @@ export default function ChatsPage() {
     { text: "Payment Options", color: "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100" },
   ], [])
 
-  if (loading || (!loading && !user)) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null // Let the useEffect handle redirect
+  }
+
+  // Show skeleton loading while fetching data
+  if (pageLoading) {
     return (
       <div className="flex-1 space-y-4 sm:space-y-6 p-4 sm:p-6 md:p-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p className="text-sellio-neutral-dark">Loading chats...</p>
+        {/* Header Skeleton */}
+        <div className="flex flex-col space-y-4 sm:space-y-0 sm:flex-row sm:items-center justify-between">
+          <div>
+            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
           </div>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+            <div className="h-9 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Chat Layout Skeleton */}
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+          {/* Chat List Skeleton */}
+          <Card className="lg:col-span-1 border-0 shadow-lg">
+            <CardHeader className="pb-3 sm:pb-4">
+              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-4"></div>
+              <div className="relative">
+                <div className="absolute left-3 top-3 h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                <div className="h-9 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse pl-10"></div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2 sm:space-y-3 max-h-96 sm:max-h-none overflow-y-auto">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center space-x-3 p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    <div className="h-3 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  </div>
+                  <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Chat Window Skeleton */}
+          <Card className="lg:col-span-2 border-0 shadow-lg">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between border-b bg-gray-50 space-y-3 sm:space-y-0">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="relative flex-shrink-0">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+                  <div className="absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 bg-green-500 border-2 border-white rounded-full"></div>
+                </div>
+                <div>
+                  <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    <div className="h-4 w-12 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-8 w-8 sm:h-10 sm:w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                ))}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="h-64 sm:h-80 md:h-96 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-xs sm:max-w-sm lg:max-w-md ${i % 2 === 0 ? 'bg-blue-500 text-white' : 'bg-gray-100 dark:bg-gray-800'} rounded-lg p-3 animate-pulse`}>
+                      <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Message Input Skeleton */}
+              <div className="border-t bg-gray-50 p-3 sm:p-4">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  ))}
+                </div>
+
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-8 w-8 sm:h-10 sm:w-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  ))}
+                  <div className="flex-1 h-9 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  <div className="h-9 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )

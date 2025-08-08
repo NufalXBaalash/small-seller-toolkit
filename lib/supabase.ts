@@ -194,34 +194,38 @@ export const fetchUserDashboardData = async (userId: string, retryCount = 0): Pr
 }
 
 // Optimized customer fetching with pagination
-export const fetchUserCustomers = async (userId: string, limit: number = 50, offset: number = 0): Promise<Customer[]> => {
-  const cacheKey = `customers-${userId}-${limit}-${offset}`
+export const fetchUserCustomers = async (userId: string): Promise<any[]> => {
+  const cacheKey = `customers-${userId}`
   const cached = getCachedData(cacheKey)
   if (cached) {
     return cached
   }
 
   try {
-    // Try to use optimized function first
+    console.log('[fetchUserCustomers] Starting fetch for user:', userId)
+    
+    // Try to use the new optimized function first
     try {
-      const { data, error } = await supabase
+      const { data: customersData, error } = await supabase
         .rpc('get_customers_optimized', { 
-          user_id_param: userId, 
-          limit_param: limit, 
-          offset_param: offset 
+          user_id_param: userId,
+          page_size: 50, // Limit for faster loading
+          page_number: 1
         })
 
-      if (!error && data) {
-        const result = data || []
-        setCachedData(cacheKey, result)
-        return result
+      if (!error && customersData) {
+        console.log('[fetchUserCustomers] Optimized function succeeded')
+        setCachedData(cacheKey, customersData)
+        return customersData
       }
     } catch (e) {
-      console.log('Optimized customers function not available, using fallback')
+      console.log('[fetchUserCustomers] Optimized customers function not available, using fallback:', e)
     }
 
-    // Fallback to direct query
-    const { data, error } = await supabase
+    console.log('[fetchUserCustomers] Using fallback query')
+    
+    // Optimized fallback query - fetch only essential fields
+    const { data: customers, error } = await supabase
       .from("customers")
       .select(`
         id,
@@ -232,53 +236,60 @@ export const fetchUserCustomers = async (userId: string, limit: number = 50, off
         total_orders,
         total_spent,
         status,
-        last_order_date,
-        created_at
+        created_at,
+        updated_at
       `)
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1)
+      .limit(50) // Limit for faster loading
 
-    if (error) throw error
-    
-    const result = data || []
-    setCachedData(cacheKey, result)
-    return result
+    if (error) {
+      console.error("[fetchUserCustomers] Error:", error)
+      throw error
+    }
+
+    console.log('[fetchUserCustomers] Fallback query completed')
+    setCachedData(cacheKey, customers || [])
+    return customers || []
   } catch (error) {
-    console.error("Error fetching customers:", error)
+    console.error("[fetchUserCustomers] Error:", error)
     throw error
   }
 }
 
 // Optimized product fetching with pagination
-export const fetchUserProducts = async (userId: string, limit: number = 50, offset: number = 0): Promise<Product[]> => {
-  const cacheKey = `products-${userId}-${limit}-${offset}`
+export const fetchUserProducts = async (userId: string): Promise<any[]> => {
+  const cacheKey = `products-${userId}`
   const cached = getCachedData(cacheKey)
   if (cached) {
     return cached
   }
 
   try {
-    // Try to use optimized function first
+    console.log('[fetchUserProducts] Starting fetch for user:', userId)
+    
+    // Try to use the new optimized function first
     try {
-      const { data, error } = await supabase
+      const { data: productsData, error } = await supabase
         .rpc('get_products_optimized', { 
-          user_id_param: userId, 
-          limit_param: limit, 
-          offset_param: offset 
+          user_id_param: userId,
+          page_size: 50, // Limit for faster loading
+          page_number: 1
         })
 
-      if (!error && data) {
-        const result = data || []
-        setCachedData(cacheKey, result)
-        return result
+      if (!error && productsData) {
+        console.log('[fetchUserProducts] Optimized function succeeded')
+        setCachedData(cacheKey, productsData)
+        return productsData
       }
     } catch (e) {
-      console.log('Optimized products function not available, using fallback')
+      console.log('[fetchUserProducts] Optimized products function not available, using fallback:', e)
     }
 
-    // Fallback to direct query
-    const { data, error } = await supabase
+    console.log('[fetchUserProducts] Using fallback query')
+    
+    // Optimized fallback query - fetch only essential fields
+    const { data: products, error } = await supabase
       .from("products")
       .select(`
         id,
@@ -295,21 +306,24 @@ export const fetchUserProducts = async (userId: string, limit: number = 50, offs
       `)
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1)
+      .limit(50) // Limit for faster loading
 
-    if (error) throw error
-    
-    const result = data || []
-    setCachedData(cacheKey, result)
-    return result
+    if (error) {
+      console.error("[fetchUserProducts] Error:", error)
+      throw error
+    }
+
+    console.log('[fetchUserProducts] Fallback query completed')
+    setCachedData(cacheKey, products || [])
+    return products || []
   } catch (error) {
-    console.error("Error fetching products:", error)
+    console.error("[fetchUserProducts] Error:", error)
     throw error
   }
 }
 
 // Optimized order fetching with new database functions
-export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
+export const fetchUserOrders = async (userId: string): Promise<any[]> => {
   const cacheKey = `orders-${userId}`
   const cached = getCachedData(cacheKey)
   if (cached) {
@@ -317,32 +331,40 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
   }
 
   try {
-    // Try to use optimized function first
+    console.log('[fetchUserOrders] Starting fetch for user:', userId)
+    
+    // Try to use the new optimized function first
     try {
-      const { data, error } = await supabase
-        .rpc('get_orders_optimized', { user_id_param: userId })
-      
-      if (!error && data) {
-        const result = data || []
-        setCachedData(cacheKey, result)
-        return result
+      const { data: ordersData, error } = await supabase
+        .rpc('get_orders_optimized', { 
+          user_id_param: userId,
+          page_size: 50, // Limit for faster loading
+          page_number: 1
+        })
+
+      if (!error && ordersData) {
+        console.log('[fetchUserOrders] Optimized function succeeded')
+        setCachedData(cacheKey, ordersData)
+        return ordersData
       }
     } catch (e) {
-      console.log('Optimized orders function not available, using fallback')
+      console.log('[fetchUserOrders] Optimized orders function not available, using fallback:', e)
     }
 
-    // Fallback to direct query with optimized select
-    const { data, error } = await supabase
+    console.log('[fetchUserOrders] Using fallback query')
+    
+    // Optimized fallback query - fetch only essential fields
+    const { data: orders, error } = await supabase
       .from("orders")
       .select(`
         id,
         order_number,
         total_amount,
-        created_at,
         status,
-        customer_id,
-        platform,
         payment_status,
+        platform,
+        created_at,
+        customer_id,
         customers (
           name,
           email,
@@ -360,23 +382,18 @@ export const fetchUserOrders = async (userId: string): Promise<Order[]> => {
       `)
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
+      .limit(50) // Limit for faster loading
 
-    if (error) throw error
-    
-    // Transform the data to match the Order interface
-    const result = (data || []).map((order: any) => ({
-      ...order,
-      customers: Array.isArray(order.customers) ? order.customers[0] || null : order.customers,
-      order_items: order.order_items?.map((item: any) => ({
-        ...item,
-        products: Array.isArray(item.products) ? item.products[0] || null : item.products
-      })) || []
-    })) as Order[]
-    
-    setCachedData(cacheKey, result)
-    return result
+    if (error) {
+      console.error("[fetchUserOrders] Error:", error)
+      throw error
+    }
+
+    console.log('[fetchUserOrders] Fallback query completed')
+    setCachedData(cacheKey, orders || [])
+    return orders || []
   } catch (error) {
-    console.error("Error fetching orders:", error)
+    console.error("[fetchUserOrders] Error:", error)
     throw error
   }
 }
@@ -507,7 +524,7 @@ export const fetchUserAnalytics = async (userId: string): Promise<{
 }
 
 // Optimized chat fetching
-export const fetchUserChats = async (userId: string): Promise<Chat[]> => {
+export const fetchUserChats = async (userId: string): Promise<any[]> => {
   const cacheKey = `chats-${userId}`
   const cached = getCachedData(cacheKey)
   if (cached) {
@@ -515,10 +532,19 @@ export const fetchUserChats = async (userId: string): Promise<Chat[]> => {
   }
 
   try {
-    const { data, error } = await supabase
+    console.log('[fetchUserChats] Starting fetch for user:', userId)
+    
+    // Optimized query - fetch only essential fields
+    const { data: chats, error } = await supabase
       .from("chats")
       .select(`
-        *,
+        id,
+        platform,
+        last_message,
+        unread_count,
+        status,
+        created_at,
+        updated_at,
         customers (
           id,
           name,
@@ -528,14 +554,18 @@ export const fetchUserChats = async (userId: string): Promise<Chat[]> => {
       `)
       .eq("user_id", userId)
       .order("updated_at", { ascending: false })
+      .limit(50) // Limit for faster loading
 
-    if (error) throw error
-    
-    const result = data || []
-    setCachedData(cacheKey, result)
-    return result
+    if (error) {
+      console.error("[fetchUserChats] Error:", error)
+      throw error
+    }
+
+    console.log('[fetchUserChats] Query completed')
+    setCachedData(cacheKey, chats || [])
+    return chats || []
   } catch (error) {
-    console.error("Error fetching chats:", error)
+    console.error("[fetchUserChats] Error:", error)
     throw error
   }
 }
@@ -926,13 +956,6 @@ interface Chat {
   unread_count: number
   status: string
   created_at: string
-  updated_at: string
-  customers: {
-    id: string
-    name: string
-    email: string | null
-    phone_number: string | null
-  }
 }
 
 interface Message {
