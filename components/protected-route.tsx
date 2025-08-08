@@ -16,6 +16,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter()
   const [isRedirecting, setIsRedirecting] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hasRedirected = useRef(false)
 
   useEffect(() => {
     // Clear any existing timeout
@@ -23,16 +24,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       clearTimeout(timeoutRef.current)
     }
 
-    if (!loading && !user && !isRedirecting) {
+    // Only redirect if we haven't already redirected and user is not authenticated
+    if (!loading && !user && !isRedirecting && !hasRedirected.current) {
+      console.log('[ProtectedRoute] User not authenticated, redirecting to login')
+      hasRedirected.current = true
       setIsRedirecting(true)
-      router.push("/login")
+      // Use replace instead of push to prevent back button issues
+      router.replace("/login")
     } else if (loading) {
-      // Set a timeout to prevent infinite loading
+      // Set a shorter timeout to prevent infinite loading
       timeoutRef.current = setTimeout(() => {
         console.warn('[ProtectedRoute] Loading timeout reached, forcing redirect to login')
-        setIsRedirecting(true)
-        router.push("/login")
-      }, 15000) // 15 second timeout
+        if (!hasRedirected.current) {
+          hasRedirected.current = true
+          setIsRedirecting(true)
+          router.replace("/login")
+        }
+      }, 8000) // Reduced to 8 seconds
     }
 
     return () => {
@@ -46,6 +54,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     if (user) {
       setIsRedirecting(false)
+      hasRedirected.current = false
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current)
         timeoutRef.current = null
@@ -53,13 +62,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [user])
 
+  // Show minimal loading state to prevent full page refresh feeling
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
-          <p className="text-sm text-gray-400 mt-2">This may take a few moments</p>
+          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
       </div>
     )

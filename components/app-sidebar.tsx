@@ -4,6 +4,7 @@ import type React from "react"
 import { Home, Settings, Package, Users, BarChart3, MessageSquare, LogOut, ShoppingCart } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
+import { usePathname } from "next/navigation"
 
 import {
   Sidebar,
@@ -60,6 +61,7 @@ const items = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { signOut, userProfile } = useAuth()
+  const pathname = usePathname()
 
   const handleSignOut = async () => {
     try {
@@ -94,20 +96,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <button
-                      type="button"
-                      onClick={() => (window.location.href = item.url)}
-                      className="flex items-center w-full h-full bg-transparent border-0 p-0 m-0 text-left"
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </button>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items.map((item) => {
+                const isActive = pathname === item.url
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link href={item.url} className="flex items-center w-full h-full">
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

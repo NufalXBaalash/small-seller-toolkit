@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { ProtectedRoute } from "@/components/protected-route"
 import { usePathname } from "next/navigation";
+import { useMemo } from "react"
 
 export default function DashboardLayout({
   children,
@@ -21,6 +22,18 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname();
+  
+  // Memoize the breadcrumb to prevent unnecessary re-renders
+  const breadcrumb = useMemo(() => {
+    const segments = pathname.split('/').filter(Boolean)
+    const currentPage = segments[segments.length - 1] || 'dashboard'
+    
+    return {
+      currentPage: currentPage.charAt(0).toUpperCase() + currentPage.slice(1),
+      isDashboard: currentPage === 'dashboard'
+    }
+  }, [pathname])
+
   return (
     <ProtectedRoute>
       <SidebarProvider>
@@ -37,13 +50,15 @@ export default function DashboardLayout({
                   </BreadcrumbItem>
                   <BreadcrumbSeparator className="hidden md:block" />
                   <BreadcrumbItem>
-                    <BreadcrumbPage>Overview</BreadcrumbPage>
+                    <BreadcrumbPage>{breadcrumb.currentPage}</BreadcrumbPage>
                   </BreadcrumbItem>
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
           </header>
-          <div className="flex flex-1 flex-col gap-4 p-4 pt-0" key={pathname}>{children}</div>
+          <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+            {children}
+          </div>
         </SidebarInset>
       </SidebarProvider>
     </ProtectedRoute>

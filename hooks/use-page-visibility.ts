@@ -1,40 +1,28 @@
 import { useEffect, useRef, useCallback } from 'react'
 
-export function usePageVisibility() {
+export function useRefetchOnVisibility(refetchFunction: () => void | Promise<void>) {
   const isVisible = useRef(true)
+  const isRefetching = useRef(false)
+
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'visible' && !isVisible.current) {
+      isVisible.current = true
+      // Only refetch if we're not already refetching
+      if (!isRefetching.current) {
+        isRefetching.current = true
+        Promise.resolve(refetchFunction()).finally(() => {
+          isRefetching.current = false
+        })
+      }
+    } else if (document.visibilityState === 'hidden') {
+      isVisible.current = false
+    }
+  }, [refetchFunction])
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      isVisible.current = !document.hidden
-    }
-
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [])
-
-  return isVisible.current
-}
-
-export function useRefetchOnVisibility(refetch: () => void | Promise<void>) {
-  const isVisible = usePageVisibility()
-  const wasVisible = useRef(true)
-  const refetchRef = useRef(refetch)
-
-  // Update the refetch function reference
-  refetchRef.current = refetch
-
-  useEffect(() => {
-    if (isVisible && !wasVisible.current) {
-      // Page became visible again, refetch data
-      // Add a small delay to ensure the page is fully visible
-      const timeoutId = setTimeout(() => {
-        refetchRef.current()
-      }, 100)
-      
-      return () => clearTimeout(timeoutId)
-    }
-    wasVisible.current = isVisible
-  }, [isVisible])
+  }, [handleVisibilityChange])
 } 

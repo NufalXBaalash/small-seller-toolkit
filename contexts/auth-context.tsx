@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileFetchInProgress.current = false
       setLoading(false)
       setIsInitialized(true)
-    }, 15000) // Increased to 15 seconds for production
+    }, 8000) // Reduced to 8 seconds for faster response
     
     try {
       console.log('[AuthContext] fetchUserProfile: Fetching profile for user:', userId)
@@ -78,14 +78,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!session) {
         console.warn('[AuthContext] fetchUserProfile: No active session found')
         setUserProfile(null)
+        setLoading(false)
+        setIsInitialized(true)
         return
       }
       
       // Retry logic for profile fetch
       let lastError = null;
-      for (let attempt = 1; attempt <= 3; attempt++) {
+      for (let attempt = 1; attempt <= 2; attempt++) { // Reduced to 2 attempts
         try {
-          console.log(`[AuthContext] fetchUserProfile: Attempt ${attempt}/3`);
+          console.log(`[AuthContext] fetchUserProfile: Attempt ${attempt}/2`);
           
           const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
 
@@ -98,98 +100,64 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               // Profile doesn't exist - this might be a new user or trigger failed
               console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), attempting to create profile')
               
-              // Try to create the profile manually
-              try {
-                const { data: userData } = await supabase.auth.getUser()
-                if (userData?.user) {
-                  const { error: createError } = await supabase.from("users").insert({
-                    id: userId,
-                    email: userData.user.email,
-                    first_name: userData.user.user_metadata?.first_name || userData.user.user_metadata?.firstName || '',
-                    last_name: userData.user.user_metadata?.last_name || userData.user.user_metadata?.lastName || '',
-                    business_name: userData.user.user_metadata?.business_name || userData.user.user_metadata?.businessName || '',
-                    phone_number: userData.user.user_metadata?.phone_number || userData.user.user_metadata?.phoneNumber || '',
-                  })
-                  
-                  if (createError) {
-                    console.error('[AuthContext] fetchUserProfile: Failed to create profile manually:', createError)
-                    setUserProfile(null)
-                  } else {
-                    console.log('[AuthContext] fetchUserProfile: Profile created manually')
-                    // Fetch the newly created profile
-                    const { data: newProfile, error: fetchError } = await supabase.from("users").select("*").eq("id", userId).single()
-                    if (fetchError) {
-                      console.error('[AuthContext] fetchUserProfile: Failed to fetch newly created profile:', fetchError)
-                      setUserProfile(null)
-                    } else {
-                      console.log('[AuthContext] fetchUserProfile: Newly created profile fetched:', newProfile)
-                      setUserProfile(newProfile)
-                    }
-                  }
-                } else {
-                  setUserProfile(null)
-                }
-              } catch (createError) {
-                console.error('[AuthContext] fetchUserProfile: Error creating profile manually:', createError)
-                setUserProfile(null)
+              // Try to create the profile
+              const { data: newProfile, error: createError } = await supabase
+                .from("users")
+                .insert([{ id: userId }])
+                .select()
+                .single()
+
+              if (createError) {
+                console.error('[AuthContext] fetchUserProfile: Failed to create profile:', createError)
+                // Continue to next attempt
+                continue
               }
-              break;
-            } else if (error.code === "42501") {
-              // Permission denied - RLS policy issue
-              console.error('[AuthContext] fetchUserProfile: Permission denied - RLS policy may be blocking access')
-              setUserProfile(null)
-              break;
-            } else if (error.message?.includes('timeout') || error.message?.includes('network')) {
-              // Network/timeout error - retry
-              if (attempt < 3) {
-                console.log(`[AuthContext] fetchUserProfile: Network error, retrying in ${attempt * 1000}ms...`)
-                await new Promise(resolve => setTimeout(resolve, attempt * 1000))
-                continue;
-              }
+
+              console.log('[AuthContext] fetchUserProfile: Profile created successfully')
+              setUserProfile(newProfile)
+              break
             }
             
-            // For other errors, don't retry
-            setUserProfile(null)
-            break;
-          } else {
-            console.log('[AuthContext] fetchUserProfile: Profile fetched successfully:', data)
-            setUserProfile(data)
-            break;
+            // For other errors, wait a bit before retrying
+            if (attempt < 2) {
+              await new Promise(resolve => setTimeout(resolve, 1000))
+            }
+            continue
           }
+
+          // Success - clear timeout and set profile
+          if (loadingTimeoutRef.current) {
+            clearTimeout(loadingTimeoutRef.current)
+            loadingTimeoutRef.current = null
+          }
+          
+          console.log('[AuthContext] fetchUserProfile: Profile fetched successfully')
+          setUserProfile(data)
+          break
         } catch (error) {
           console.error(`[AuthContext] fetchUserProfile: Attempt ${attempt} exception:`, error)
-          lastError = error;
+          lastError = error
           
-          if (attempt < 3) {
-            console.log(`[AuthContext] fetchUserProfile: Exception, retrying in ${attempt * 1000}ms...`)
-            await new Promise(resolve => setTimeout(resolve, attempt * 1000))
-            continue;
+          if (attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
           }
         }
       }
-      
-      // If all attempts failed, set profile to null
-      if (lastError && !userProfile) {
-        console.error('[AuthContext] fetchUserProfile: All attempts failed, setting profile to null')
+
+      // If all attempts failed
+      if (!profileFetchInProgress.current) {
+        console.error('[AuthContext] fetchUserProfile: All attempts failed:', lastError)
         setUserProfile(null)
       }
-      
     } catch (error) {
-      console.error('[AuthContext] fetchUserProfile: Error:', error)
+      console.error('[AuthContext] fetchUserProfile: Unexpected error:', error)
       setUserProfile(null)
     } finally {
-      // Clear the timeout since we completed successfully
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current)
-        loadingTimeoutRef.current = null
-      }
-      
       profileFetchInProgress.current = false
       setLoading(false)
       setIsInitialized(true)
-      console.log('[AuthContext] fetchUserProfile: setLoading(false), setIsInitialized(true)')
     }
-  }, [userProfile])
+  }, [])
 
   // Fallback mechanism to ensure loading state is always resolved
   useEffect(() => {
