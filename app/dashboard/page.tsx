@@ -177,6 +177,15 @@ export default function Dashboard() {
   const dataCache = useRef<Map<string, { data: any; timestamp: number }>>(new Map())
   const lastUserId = useRef<string | null>(null)
 
+  // Clear cache when user changes
+  useEffect(() => {
+    if (user?.id !== lastUserId.current) {
+      console.log('[Dashboard] User changed, clearing cache')
+      dataCache.current.clear()
+      lastUserId.current = user?.id || null
+    }
+  }, [user?.id])
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !user) {
@@ -387,37 +396,41 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user?.id && !authLoading) {
+      console.log('[Dashboard] User authenticated, fetching data')
       fetchDashboardData()
+    } else if (!authLoading && !user) {
+      console.log('[Dashboard] No user, redirecting to login')
+      router.push("/login")
     }
-  }, [user?.id, authLoading, fetchDashboardData])
+  }, [user?.id, authLoading, fetchDashboardData, router])
 
   // Memoized stats cards data
   const statsCards = useMemo(() => [
     {
       title: "Total Revenue",
-      value: `$${(stats?.totalRevenue || 0).toFixed(2)}`,
+      value: `$${(displayStats.totalRevenue || 0).toFixed(2)}`,
       subtitle: "+20.1% from last month",
       icon: DollarSign,
     },
     {
       title: "Total Orders",
-      value: stats?.totalOrders || 0,
+      value: displayStats.totalOrders || 0,
       subtitle: "+180.1% from last month",
       icon: ShoppingCart,
     },
     {
       title: "Active Chats",
-      value: stats?.activeChats || 0,
+      value: displayStats.activeChats || 0,
       subtitle: "+19% from last month",
       icon: MessageSquare,
     },
     {
       title: "Total Customers",
-      value: stats?.totalCustomers || 0,
+      value: displayStats.totalCustomers || 0,
       subtitle: "+201 since last month",
       icon: Users,
     },
-  ], [stats?.totalRevenue, stats?.totalOrders, stats?.activeChats, stats?.totalCustomers])
+  ], [displayStats.totalRevenue, displayStats.totalOrders, displayStats.activeChats, displayStats.totalCustomers])
 
   // Memoized quick actions
   const quickActions = useMemo(() => [
@@ -428,16 +441,18 @@ export default function Dashboard() {
     { icon: TrendingUp, children: "View Analytics" },
   ], [])
 
-  if (authLoading) {
+  // Show loading state only during auth loading or when we have no user
+  if (authLoading || !user) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">
+            {authLoading ? "Loading authentication..." : "Redirecting to login..."}
+          </p>
+        </div>
       </div>
     )
-  }
-
-  if (!user) {
-    return null // Let the useEffect handle redirect
   }
 
   // Show minimal loading indicator only if we have no data and are loading
@@ -446,10 +461,19 @@ export default function Dashboard() {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
+          <p className="text-sm text-muted-foreground">Loading dashboard data...</p>
         </div>
       </div>
     )
+  }
+
+  // Ensure we always have stats to display
+  const displayStats = stats || {
+    totalRevenue: 0,
+    totalOrders: 0,
+    activeChats: 0,
+    totalCustomers: 0,
+    recentActivity: []
   }
 
   if (error) {
@@ -500,15 +524,15 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
             <CardDescription>
-              You have {stats?.recentActivity.length || 0} new activities
+              You have {displayStats.recentActivity.length || 0} new activities
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats?.recentActivity.map((activity) => (
+              {displayStats.recentActivity.map((activity) => (
                 <ActivityItem key={activity.id} activity={activity} />
               ))}
-              {(!stats?.recentActivity || stats.recentActivity.length === 0) && (
+              {displayStats.recentActivity.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   No recent activity
                 </div>

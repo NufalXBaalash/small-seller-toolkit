@@ -183,8 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthContext] initializeAuth: Restoring from cache')
       setUser(cached.user)
       setUserProfile(cached.userProfile)
-      setLoading(false)
-      setIsInitialized(true)
+      // Don't set loading to false here - wait for session verification
     }
 
     // Then, verify with actual session
@@ -195,6 +194,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('[AuthContext] initializeAuth: Session error:', error)
         setUser(null)
         setUserProfile(null)
+        setCachedAuth(null, null)
         setLoading(false)
         setIsInitialized(true)
         return
@@ -204,10 +204,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[AuthContext] initializeAuth: Session found, updating state')
         setUser(session.user)
         
-                 // Only fetch profile if we don't have it cached or if user changed
-         if (!cached?.userProfile || cached.user?.id !== session.user.id) {
-           await fetchUserProfile(session.user.id)
-         }
+        // Only fetch profile if we don't have it cached or if user changed
+        if (!cached?.userProfile || cached.user?.id !== session.user.id) {
+          await fetchUserProfile(session.user.id)
+        } else {
+          // If we have cached profile and user hasn't changed, use cached data
+          setUserProfile(cached.userProfile)
+        }
       } else {
         console.log('[AuthContext] initializeAuth: No session found')
         setUser(null)
@@ -236,6 +239,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[AuthContext] onAuthStateChange:', event, session?.user?.id)
+      
+      // Don't process auth changes during initial load
+      if (!isInitialized) {
+        console.log('[AuthContext] onAuthStateChange: Skipping during initialization')
+        return
+      }
       
       switch (event) {
         case 'SIGNED_IN':
@@ -268,7 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [fetchUserProfile])
+  }, [fetchUserProfile, isInitialized])
 
   const signUp = useCallback(async (email: string, password: string, userData: SignUpData) => {
     try {

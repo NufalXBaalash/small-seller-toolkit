@@ -68,18 +68,19 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [user])
 
-  // Show minimal loading state only if we don't have a user and are still loading
+  // Show loading state only if we're loading and don't have a user
   if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <Loader2 className="h-6 w-6 animate-spin mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">Loading authentication...</p>
         </div>
       </div>
     )
   }
 
+  // Don't render anything if user is not authenticated or we're redirecting
   if (!user || isRedirecting) {
     return null
   }
