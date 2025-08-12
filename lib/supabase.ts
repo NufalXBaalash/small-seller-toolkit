@@ -77,33 +77,49 @@ export const fetchUserDashboardData = async (userId: string, retryCount = 0): Pr
   try {
     console.log('[fetchUserDashboardData] Starting fetch for user:', userId, 'retry:', retryCount)
     
+    // Add timeout to prevent hanging requests
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database request timeout')), 8000) // 8 second timeout
+    })
+    
     // Try to use the new optimized function first
-    try {
-      const { data: dashboardData, error } = await supabase
-        .rpc('get_user_dashboard_data', { user_id_param: userId })
+    const optimizedPromise = (async () => {
+      try {
+        const { data: dashboardData, error } = await supabase
+          .rpc('get_user_dashboard_data', { user_id_param: userId })
 
-      if (!error && dashboardData) {
-        console.log('[fetchUserDashboardData] Optimized function succeeded')
-        const result = {
-          orders: dashboardData?.recent_orders || [],
-          chats: dashboardData?.active_chats || [],
-          customers: [], // Will be fetched separately if needed
-          products: dashboardData?.low_stock_products || [],
-          dailyStats: [],
-          errors: { dashboard: error }
+        if (!error && dashboardData) {
+          console.log('[fetchUserDashboardData] Optimized function succeeded')
+          const result = {
+            orders: dashboardData?.recent_orders || [],
+            chats: dashboardData?.active_chats || [],
+            customers: [], // Will be fetched separately if needed
+            products: dashboardData?.low_stock_products || [],
+            dailyStats: [],
+            errors: { dashboard: error }
+          }
+
+          setCachedData(cacheKey, result)
+          return result
         }
-
-        setCachedData(cacheKey, result)
-        return result
+        throw new Error('Optimized function failed')
+      } catch (e) {
+        console.log('[fetchUserDashboardData] Optimized dashboard function not available, using fallback:', e)
+        throw e
       }
-    } catch (e) {
-      console.log('[fetchUserDashboardData] Optimized dashboard function not available, using fallback:', e)
+    })()
+    
+    try {
+      const result = await Promise.race([optimizedPromise, timeoutPromise])
+      return result
+    } catch (optimizedError) {
+      console.log('[fetchUserDashboardData] Optimized function failed, using fallback queries')
     }
 
     console.log('[fetchUserDashboardData] Using fallback queries')
     
-    // Optimized fallback queries - fetch only what's needed for dashboard
-    const [ordersResult, chatsResult, customersResult, productsResult] = await Promise.all([
+    // Optimized fallback queries - fetch only what's needed for dashboard with timeout
+    const fallbackPromise = Promise.all([
       supabase
         .from("orders")
         .select(`
@@ -157,12 +173,18 @@ export const fetchUserDashboardData = async (userId: string, retryCount = 0): Pr
         .select(`
           id,
           name,
+          sku,
           stock
         `)
         .eq("user_id", userId)
         .lte("stock", 5)
         .gt("stock", 0)
         .limit(3) // Only need 3 for dashboard
+    ])
+
+    const [ordersResult, chatsResult, customersResult, productsResult] = await Promise.race([
+      fallbackPromise,
+      timeoutPromise
     ])
 
     console.log('[fetchUserDashboardData] Fallback queries completed')
@@ -186,13 +208,22 @@ export const fetchUserDashboardData = async (userId: string, retryCount = 0): Pr
   } catch (error) {
     console.error("[fetchUserDashboardData] Error:", error)
     
-    // Retry once if it's the first attempt
-    if (retryCount === 0) {
-      console.log('[fetchUserDashboardData] Retrying...')
+    // Retry once if it's the first attempt and it's a timeout
+    if (retryCount === 0 && error instanceof Error && error.message.includes('timeout')) {
+      console.log('[fetchUserDashboardData] Timeout, retrying...')
       return fetchUserDashboardData(userId, retryCount + 1)
     }
     
-    throw error
+    // Return fallback data instead of throwing
+    console.log('[fetchUserDashboardData] Returning fallback data due to error:', error)
+    return {
+      orders: [],
+      chats: [],
+      customers: [],
+      products: [],
+      dailyStats: [],
+      errors: { dashboard: error }
+    }
   }
 }
 
