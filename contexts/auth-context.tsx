@@ -37,6 +37,59 @@ interface SignUpData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Cache key for localStorage
+const AUTH_CACHE_KEY = 'sellio-auth-cache'
+
+// Cache interface
+interface AuthCache {
+  user: User | null
+  userProfile: UserProfile | null
+  timestamp: number
+}
+
+// Helper function to get cached auth data
+const getCachedAuth = (): AuthCache | null => {
+  if (typeof window === 'undefined') return null
+  
+  try {
+    const cached = localStorage.getItem(AUTH_CACHE_KEY)
+    if (!cached) return null
+    
+    const data: AuthCache = JSON.parse(cached)
+    const now = Date.now()
+    const cacheAge = now - data.timestamp
+    
+    // Cache is valid for 5 minutes
+    if (cacheAge < 5 * 60 * 1000) {
+      return data
+    }
+    
+    // Clear expired cache
+    localStorage.removeItem(AUTH_CACHE_KEY)
+    return null
+  } catch (error) {
+    console.warn('Failed to parse cached auth data:', error)
+    localStorage.removeItem(AUTH_CACHE_KEY)
+    return null
+  }
+}
+
+// Helper function to set cached auth data
+const setCachedAuth = (user: User | null, userProfile: UserProfile | null) => {
+  if (typeof window === 'undefined') return
+  
+  try {
+    const cache: AuthCache = {
+      user,
+      userProfile,
+      timestamp: Date.now()
+    }
+    localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(cache))
+  } catch (error) {
+    console.warn('Failed to cache auth data:', error)
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
@@ -44,154 +97,102 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false)
   const router = useRouter()
   
-  // Refs to track state and prevent unnecessary re-renders
-  const profileFetchInProgress = useRef(false)
-  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Refs to prevent unnecessary re-renders
   const sessionRestoreAttempted = useRef(false)
-  const lastUserRef = useRef<string | null>(null)
-  const lastProfileRef = useRef<string | null>(null)
+  const profileFetchInProgress = useRef(false)
 
-  // Memoized fetchUserProfile function to prevent unnecessary re-renders
+  // Memoized fetchUserProfile function
   const fetchUserProfile = useCallback(async (userId: string) => {
-    // Prevent multiple simultaneous profile fetches
     if (profileFetchInProgress.current) {
       console.log('[AuthContext] fetchUserProfile: Already in progress, skipping')
       return
     }
 
-    // Check if we already have the profile for this user
-    if (lastProfileRef.current === userId && userProfile) {
-      console.log('[AuthContext] fetchUserProfile: Profile already cached for user:', userId)
-      return
-    }
-
     profileFetchInProgress.current = true
-    
-    // Set a timeout to prevent infinite loading - reduced to 2 seconds
-    if (loadingTimeoutRef.current) {
-      clearTimeout(loadingTimeoutRef.current)
-    }
-    
-    loadingTimeoutRef.current = setTimeout(() => {
-      console.warn('[AuthContext] fetchUserProfile: Timeout reached, forcing loading to false')
-      profileFetchInProgress.current = false
-      setLoading(false)
-      setIsInitialized(true)
-    }, 2000) // Reduced to 2 seconds for faster response
     
     try {
       console.log('[AuthContext] fetchUserProfile: Fetching profile for user:', userId)
       
-      // First, check if we have a valid session
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        console.warn('[AuthContext] fetchUserProfile: No active session found')
-        setUserProfile(null)
-        setLoading(false)
-        setIsInitialized(true)
-        return
-      }
-      
-      // Single attempt with better error handling
-      try {
-        console.log('[AuthContext] fetchUserProfile: Attempting to fetch profile')
+      const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
+
+      if (error) {
+        console.error('[AuthContext] fetchUserProfile: Error fetching profile:', error)
         
-        const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
-
-        if (error) {
-          console.error('[AuthContext] fetchUserProfile: Error fetching profile:', error)
+        if (error.code === "PGRST116") {
+          // Profile doesn't exist, try to create it
+          console.log('[AuthContext] fetchUserProfile: Profile not found, creating...')
           
-          // Handle specific error cases
-          if (error.code === "PGRST116") {
-            // Profile doesn't exist - this might be a new user or trigger failed
-            console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), attempting to create profile')
+          try {
+            const response = await fetch('/api/fix-user-profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            })
             
-            // Try to create the profile using the API endpoint first
-            try {
-              const response = await fetch('/api/fix-user-profile', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                }
-              })
-              
-              if (response.ok) {
-                const result = await response.json()
-                if (result.success && result.profile) {
-                  console.log('[AuthContext] fetchUserProfile: Profile created via API successfully')
-                  setUserProfile(result.profile)
-                  lastProfileRef.current = userId
-                  return
-                }
+            if (response.ok) {
+              const result = await response.json()
+              if (result.success && result.profile) {
+                setUserProfile(result.profile)
+                setCachedAuth(user, result.profile)
+                return
               }
-            } catch (apiError) {
-              console.warn('[AuthContext] fetchUserProfile: API profile creation failed, trying direct insert:', apiError)
             }
-            
-            // Fallback to direct insert if API fails
-            const { data: newProfile, error: createError } = await supabase
-              .from("users")
-              .insert([{ id: userId }])
-              .select()
-              .single()
+          } catch (apiError) {
+            console.warn('[AuthContext] fetchUserProfile: API creation failed:', apiError)
+          }
+          
+          // Fallback to direct insert
+          const { data: newProfile, error: createError } = await supabase
+            .from("users")
+            .insert([{ id: userId }])
+            .select()
+            .single()
 
-            if (createError) {
-              console.error('[AuthContext] fetchUserProfile: Failed to create profile:', createError)
-              // Set profile to null and continue - don't fail the auth
-              setUserProfile(null)
-            } else {
-              console.log('[AuthContext] fetchUserProfile: Profile created successfully')
-              setUserProfile(newProfile)
-              lastProfileRef.current = userId
-            }
-          } else {
-            // For other errors, set profile to null but don't fail auth
-            console.error('[AuthContext] fetchUserProfile: Profile fetch failed:', error)
+          if (createError) {
+            console.error('[AuthContext] fetchUserProfile: Failed to create profile:', createError)
             setUserProfile(null)
+          } else {
+            setUserProfile(newProfile)
+            setCachedAuth(user, newProfile)
           }
         } else {
-          // Success - clear timeout and set profile
-          console.log('[AuthContext] fetchUserProfile: Profile fetched successfully')
-          setUserProfile(data)
-          lastProfileRef.current = userId
+          setUserProfile(null)
         }
-      } catch (error) {
-        console.error('[AuthContext] fetchUserProfile: Exception during profile fetch:', error)
-        // Don't fail auth if profile fetch fails
-        setUserProfile(null)
+      } else {
+        console.log('[AuthContext] fetchUserProfile: Profile fetched successfully')
+        setUserProfile(data)
+        setCachedAuth(user, data)
       }
     } catch (error) {
-      console.error('[AuthContext] fetchUserProfile: Unexpected error:', error)
-      // Don't fail auth if profile fetch fails
+      console.error('[AuthContext] fetchUserProfile: Exception:', error)
       setUserProfile(null)
     } finally {
-      // Clear timeout and reset state
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current)
-        loadingTimeoutRef.current = null
-      }
       profileFetchInProgress.current = false
+    }
+  }, [user])
+
+  // Initialize auth state from cache first, then from session
+  const initializeAuth = useCallback(async () => {
+    if (sessionRestoreAttempted.current) return
+    
+    sessionRestoreAttempted.current = true
+    console.log('[AuthContext] initializeAuth: Starting initialization')
+
+    // First, try to restore from cache for instant loading
+    const cached = getCachedAuth()
+    if (cached && cached.user) {
+      console.log('[AuthContext] initializeAuth: Restoring from cache')
+      setUser(cached.user)
+      setUserProfile(cached.userProfile)
       setLoading(false)
       setIsInitialized(true)
     }
-  }, [userProfile])
 
-  // Enhanced session restoration function with caching
-  const restoreSession = useCallback(async () => {
-    if (sessionRestoreAttempted.current) {
-      console.log('[AuthContext] restoreSession: Already attempted, skipping')
-      return
-    }
-
-    sessionRestoreAttempted.current = true
-    console.log('[AuthContext] restoreSession: Starting session restoration')
-
+    // Then, verify with actual session
     try {
-      // Get the current session
       const { data: { session }, error } = await supabase.auth.getSession()
       
       if (error) {
-        console.error('[AuthContext] restoreSession: Error getting session:', error)
+        console.error('[AuthContext] initializeAuth: Session error:', error)
         setUser(null)
         setUserProfile(null)
         setLoading(false)
@@ -199,171 +200,75 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      console.log('[AuthContext] restoreSession: Session result:', session ? 'Found' : 'Not found')
-      
       if (session?.user) {
-        // Check if we already have this user cached
-        if (lastUserRef.current === session.user.id && user) {
-          console.log('[AuthContext] restoreSession: User already cached, skipping profile fetch')
-          setLoading(false)
-          setIsInitialized(true)
-          return
-        }
-
-        console.log('[AuthContext] restoreSession: User found, setting user state')
+        console.log('[AuthContext] initializeAuth: Session found, updating state')
         setUser(session.user)
-        lastUserRef.current = session.user.id
-        await fetchUserProfile(session.user.id)
+        
+                 // Only fetch profile if we don't have it cached or if user changed
+         if (!cached?.userProfile || cached.user?.id !== session.user.id) {
+           await fetchUserProfile(session.user.id)
+         }
       } else {
-        console.log('[AuthContext] restoreSession: No user in session')
+        console.log('[AuthContext] initializeAuth: No session found')
         setUser(null)
         setUserProfile(null)
-        lastUserRef.current = null
-        lastProfileRef.current = null
-        setLoading(false)
-        setIsInitialized(true)
+        setCachedAuth(null, null)
       }
     } catch (error) {
-      console.error('[AuthContext] restoreSession: Exception during session restoration:', error)
+      console.error('[AuthContext] initializeAuth: Exception:', error)
       setUser(null)
       setUserProfile(null)
-      lastUserRef.current = null
-      lastProfileRef.current = null
+      setCachedAuth(null, null)
+    } finally {
       setLoading(false)
       setIsInitialized(true)
     }
-  }, [fetchUserProfile, user])
+  }, [fetchUserProfile])
 
-  // Reduced fallback timeout
+  // Initialize on mount
   useEffect(() => {
-    const fallbackTimeout = setTimeout(() => {
-      if (loading && isInitialized) {
-        console.warn('[AuthContext] Fallback timeout: Forcing loading to false after 5 seconds')
-        setLoading(false)
-        setIsInitialized(true)
-      }
-    }, 5000) // Reduced to 5 seconds
+    initializeAuth()
+  }, [initializeAuth])
 
-    return () => {
-      clearTimeout(fallbackTimeout)
-    }
-  }, [loading, isInitialized])
-
-  // Optimized page visibility handling - only refresh if user changed
+  // Listen for auth changes
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null
-    
-    const handleVisibilityChange = () => {
-      if (!document.hidden && isInitialized) {
-        console.log('[AuthContext] visibilitychange: Page became visible')
-        
-        // Debounce the visibility change to prevent multiple rapid calls
-        if (timeoutId) {
-          clearTimeout(timeoutId)
-        }
-        
-        timeoutId = setTimeout(async () => {
-          const { data: { session } } = await supabase.auth.getSession()
-          console.log('[AuthContext] visibilitychange: getSession result:', session?.user?.id)
-          
-          // Only update if user actually changed
-          if (session?.user?.id !== lastUserRef.current) {
-            if (session?.user && !user) {
-              setUser(session.user)
-              lastUserRef.current = session.user.id
-              fetchUserProfile(session.user.id)
-            } else if (!session?.user && user) {
-              // User was logged out while tab was inactive
-              setUser(null)
-              setUserProfile(null)
-              lastUserRef.current = null
-              lastProfileRef.current = null
-              setLoading(false)
-              setIsInitialized(true)
-            }
-          }
-        }, 200) // Increased debounce to 200ms
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      if (timeoutId) {
-        clearTimeout(timeoutId)
-      }
-    }
-  }, [isInitialized, user, fetchUserProfile])
-
-  // Main authentication effect - improved session restoration
-  useEffect(() => {
-    let isMounted = true
-    
-    // Restore session on mount
-    console.log('[AuthContext] useEffect: Starting session restoration')
-    restoreSession()
-
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return
-      
       console.log('[AuthContext] onAuthStateChange:', event, session?.user?.id)
       
-      // Handle different auth events
       switch (event) {
         case 'SIGNED_IN':
         case 'TOKEN_REFRESHED':
           if (session?.user) {
             setUser(session.user)
-            lastUserRef.current = session.user.id
             await fetchUserProfile(session.user.id)
           }
           break
         case 'SIGNED_OUT':
           setUser(null)
           setUserProfile(null)
-          lastUserRef.current = null
-          lastProfileRef.current = null
-          setLoading(false)
-          setIsInitialized(true)
+          setCachedAuth(null, null)
           break
         case 'USER_UPDATED':
           if (session?.user) {
             setUser(session.user)
-            lastUserRef.current = session.user.id
             await fetchUserProfile(session.user.id)
           }
           break
         default:
-          // For other events, just update the user state
           setUser(session?.user ?? null)
           if (session?.user) {
-            lastUserRef.current = session.user.id
             await fetchUserProfile(session.user.id)
           } else {
             setUserProfile(null)
-            lastUserRef.current = null
-            lastProfileRef.current = null
-            setLoading(false)
-            setIsInitialized(true)
+            setCachedAuth(null, null)
           }
       }
-      
-      setIsInitialized(true)
     })
 
-    return () => {
-      isMounted = false
-      subscription.unsubscribe()
-      // Clear any pending timeouts
-      if (loadingTimeoutRef.current) {
-        clearTimeout(loadingTimeoutRef.current)
-        loadingTimeoutRef.current = null
-      }
-    }
-  }, [restoreSession, fetchUserProfile])
+    return () => subscription.unsubscribe()
+  }, [fetchUserProfile])
 
   const signUp = useCallback(async (email: string, password: string, userData: SignUpData) => {
     try {
@@ -386,8 +291,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         console.log("User created successfully:", data.user.id)
-        // Profile will be created by the database trigger
-        // We'll fetch it in the onAuthStateChange handler
       }
     } catch (error) {
       console.error("Signup error:", error)
@@ -395,12 +298,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  // This function is now primarily for updating existing profiles or creating basic ones if missing (e.g., social logins)
   const createUserProfile = useCallback(async (user: User, userData: SignUpData) => {
     try {
       console.log("Attempting to create/update profile for user:", user.id)
 
-      // Check if profile already exists
       const { data: existingProfile, error: fetchError } = await supabase
         .from("users")
         .select("id")
@@ -408,7 +309,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (fetchError && fetchError.code !== "PGRST116") {
-        // PGRST116 is "not found"
         console.error("Error checking for existing profile:", fetchError)
         throw fetchError
       }
@@ -422,7 +322,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             last_name: userData.lastName,
             business_name: userData.businessName,
             phone_number: userData.phoneNumber,
-            email: user.email!, // Ensure email is updated if changed
+            email: user.email!,
           })
           .eq("id", user.id)
 
@@ -463,7 +363,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       if (error) throw error
       console.log("Sign in successful")
-      // After sign-in, ensure user profile exists in public.users
+      
       if (data.user) {
         const { data: existingProfile } = await supabase.from("users").select("id").eq("id", data.user.id).single()
         if (!existingProfile) {
@@ -484,32 +384,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      // Clear local state first to prevent UI issues
       setUser(null)
       setUserProfile(null)
-      lastUserRef.current = null
-      lastProfileRef.current = null
-      setLoading(false)
-      setIsInitialized(true)
+      setCachedAuth(null, null)
       
-      // Then attempt to sign out from Supabase
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.warn("Supabase signOut error (non-critical):", error)
-        // Don't throw error, just log it since we already cleared local state
       }
       
-      // Always redirect regardless of Supabase signOut success
       router.push("/")
     } catch (error) {
       console.error("Sign out error:", error)
-      // Even if there's an error, clear local state and redirect
       setUser(null)
       setUserProfile(null)
-      lastUserRef.current = null
-      lastProfileRef.current = null
-      setLoading(false)
-      setIsInitialized(true)
+      setCachedAuth(null, null)
       router.push("/")
     }
   }, [router])
@@ -522,7 +411,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error
 
-      // Refresh profile
       await fetchUserProfile(user.id)
     } catch (error) {
       console.error("Update profile error:", error)
@@ -530,7 +418,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, fetchUserProfile])
 
-  // Memoize the context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
     user,
     userProfile,

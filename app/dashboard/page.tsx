@@ -168,78 +168,10 @@ QuickActionButton.displayName = "QuickActionButton"
 export default function Dashboard() {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(false) // Start with false for better UX
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user, userProfile, loading: authLoading } = useAuth()
   const router = useRouter();
-  const lastUserId = useRef<string | null>(null)
-  const dataCache = useRef<Map<string, { data: any; timestamp: number }>>(new Map())
-
-  // Process dashboard data function
-  const processDashboardData = useCallback((dashboardData: any) => {
-    // Quick stats calculation
-    const orders = dashboardData?.orders || []
-    const chats = dashboardData?.chats || []
-    const customers = dashboardData?.customers || []
-    const products = dashboardData?.products || []
-
-    // Fast stats calculation
-    const totalRevenue = orders.reduce((sum: number, order: any) => sum + (Number(order?.total_amount) || 0), 0)
-    const totalOrders = orders.length
-    const activeChats = chats.filter((chat: any) => chat?.unread_count > 0).length
-    const totalCustomers = customers.length
-
-    // Quick recent activity (max 3 items)
-    const recentActivity: DashboardStats['recentActivity'] = []
-    
-    // Add orders first (max 2)
-    orders.slice(0, 2).forEach((order: any, index: number) => {
-      if (order) {
-        recentActivity.push({
-          id: `order-${order.id || index}`,
-          type: "order" as const,
-          title: `New order from ${order.customers?.name || "Customer"}`,
-          description: `$${Number(order.total_amount || 0).toFixed(2)} - ${order.status || "pending"}`,
-          time: getTimeAgo(order.created_at || new Date().toISOString()),
-          status: order.status || "pending",
-        })
-      }
-    })
-
-    // Add one unread chat if available
-    const unreadChat = chats.find((chat: any) => chat?.unread_count > 0)
-    if (unreadChat && recentActivity.length < 3) {
-      recentActivity.push({
-        id: `message-${unreadChat.id}`,
-        type: "message" as const,
-        title: `New message from ${unreadChat.customers?.name || "Customer"}`,
-        description: unreadChat.last_message || "New message received",
-        time: getTimeAgo(unreadChat.created_at || new Date().toISOString()),
-        status: "unread",
-      })
-    }
-
-    // Add one low stock alert if available
-    const lowStockProduct = products.find((p: any) => p.stock <= 5 && p.stock > 0)
-    if (lowStockProduct && recentActivity.length < 3) {
-      recentActivity.push({
-        id: `alert-${lowStockProduct.id}`,
-        type: "alert" as const,
-        title: "Low stock alert",
-        description: `${lowStockProduct.name} - ${lowStockProduct.stock} left`,
-        time: "1h ago",
-        status: "warning",
-      })
-    }
-
-    setStats({
-      totalRevenue,
-      totalOrders,
-      activeChats,
-      totalCustomers,
-      recentActivity
-    })
-  }, [])
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -254,20 +186,6 @@ export default function Dashboard() {
       return
     }
 
-    // Check if we have cached data for this user
-    const cached = dataCache.current.get(user.id)
-    const now = Date.now()
-    const cacheAge = cached ? now - cached.timestamp : Infinity
-    const cacheValid = cacheAge < 5 * 60 * 1000 // 5 minutes cache
-
-    if (cached && cacheValid && lastUserId.current === user.id) {
-      console.log('[Dashboard] Using cached data for user:', user.id)
-      // Process cached data
-      const dashboardData = cached.data
-      processDashboardData(dashboardData)
-      return
-    }
-
     try {
       setLoading(true)
       setError(null)
@@ -275,14 +193,60 @@ export default function Dashboard() {
       console.log('[Dashboard] Fetching data for user:', user.id)
       const dashboardData = await fetchUserDashboardData(user.id)
       
-      // Cache the data
-      dataCache.current.set(user.id, {
-        data: dashboardData,
-        timestamp: Date.now()
-      })
-      lastUserId.current = user.id
+      // Quick stats calculation
+      const orders = dashboardData?.orders || []
+      const chats = dashboardData?.chats || []
+      const customers = dashboardData?.customers || []
+      const products = dashboardData?.products || []
+
+      // Fast stats calculation
+      const totalRevenue = orders.reduce((sum, order) => sum + (Number(order?.total_amount) || 0), 0)
+      const totalOrders = orders.length
+      const activeChats = chats.filter(chat => chat?.unread_count > 0).length
+      const totalCustomers = customers.length
+
+      // Quick recent activity (max 3 items)
+      const recentActivity: DashboardStats['recentActivity'] = []
       
-      processDashboardData(dashboardData)
+      // Add orders first (max 2)
+      orders.slice(0, 2).forEach((order, index) => {
+        if (order) {
+          recentActivity.push({
+            id: `order-${order.id || index}`,
+            type: "order" as const,
+            title: `New order from ${order.customers?.name || "Customer"}`,
+            description: `$${Number(order.total_amount || 0).toFixed(2)} - ${order.status || "pending"}`,
+            time: getTimeAgo(order.created_at || new Date().toISOString()),
+            status: order.status || "pending",
+          })
+        }
+      })
+
+      // Add one unread chat if available
+      const unreadChat = chats.find(chat => chat?.unread_count > 0)
+      if (unreadChat && recentActivity.length < 3) {
+        recentActivity.push({
+          id: `message-${unreadChat.id}`,
+          type: "message" as const,
+          title: `New message from ${unreadChat.customers?.name || "Customer"}`,
+          description: unreadChat.last_message || "New message received",
+          time: getTimeAgo(unreadChat.created_at || new Date().toISOString()),
+          status: "unread",
+        })
+      }
+
+      // Add one low stock alert if available
+      const lowStockProduct = products.find(p => p.stock <= 5 && p.stock > 0)
+      if (lowStockProduct && recentActivity.length < 3) {
+        recentActivity.push({
+          id: `alert-${lowStockProduct.id}`,
+          type: "alert" as const,
+          title: "Low stock alert",
+          description: `${lowStockProduct.name} - ${lowStockProduct.stock} left`,
+          time: "1h ago",
+          status: "warning",
+        })
+      }
 
       setStats({
         totalRevenue,
@@ -295,24 +259,6 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Error fetching dashboard data:", err)
       setError("Failed to load dashboard data. Please try again.")
-      
-      // Set fallback data to prevent complete failure
-      const fallbackData = {
-        orders: [],
-        customers: [],
-        products: [],
-        chats: [],
-        dailyStats: [],
-        errors: { dashboard: err }
-      }
-      
-      // Cache fallback data to prevent repeated failures
-      dataCache.current.set(user.id, {
-        data: fallbackData,
-        timestamp: Date.now()
-      })
-      
-      processDashboardData(fallbackData)
     } finally {
       setLoading(false)
     }
@@ -324,8 +270,8 @@ export default function Dashboard() {
       const timeout = setTimeout(() => {
         console.warn('[Dashboard] Loading timeout reached, forcing loading to false')
         setLoading(false)
-        setError("Loading timeout. Please try again.")
-      }, 6000) // Reduced to 6 seconds for faster response
+        setError("Loading timeout. Please refresh the page.")
+      }, 10000) // 10 second timeout
 
       return () => clearTimeout(timeout)
     }
@@ -389,75 +335,85 @@ export default function Dashboard() {
     return null // Let the useEffect handle redirect
   }
 
-  // Show minimal loading state to prevent jarring transitions
-  if (loading && !stats) {
+  // Show skeleton loading while fetching data
+  if (loading) {
     return (
       <div className="space-y-6">
-        {/* Header */}
+        {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Welcome back, {userProfile?.first_name || user?.email}!
-            </p>
+            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" disabled>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button onClick={() => setIsWhatsAppModalOpen(true)}>
-              <Zap className="h-4 w-4 mr-2" />
-              Connect WhatsApp
-            </Button>
+            <div className="h-9 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
           </div>
         </div>
 
-        {/* Loading indicator */}
-        <div className="flex items-center justify-center py-8">
-          <div className="text-center">
-            <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Loading dashboard data...</p>
-          </div>
+        {/* Stats Cards Skeleton */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+                <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Recent Activity Skeleton */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <Card className="col-span-4">
+            <CardHeader>
+              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center space-x-4">
+                    <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                      <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    </div>
+                    <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="col-span-3">
+            <CardHeader>
+              <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-9 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
       </div>
     )
   }
 
-  // Show error banner if there's an error but we have some data
-  const showErrorBanner = error && stats
-
-  if (error && !stats) {
+  if (error) {
     return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground">
-              Welcome back, {userProfile?.first_name || user?.email}!
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm" disabled>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button onClick={() => setIsWhatsAppModalOpen(true)}>
-              <Zap className="h-4 w-4 mr-2" />
-              Connect WhatsApp
-            </Button>
-          </div>
-        </div>
-
-        {/* Error state */}
-        <div className="flex items-center justify-center py-8">
-          <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error Loading Dashboard</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
-            <Button onClick={fetchDashboardData}>Try Again</Button>
-          </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Error Loading Dashboard</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <Button onClick={fetchDashboardData}>Try Again</Button>
         </div>
       </div>
     )
@@ -484,27 +440,6 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
-
-      {/* Error Banner */}
-      {showErrorBanner && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-destructive">{error}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Some data may not be available. You can still use the application.
-            </p>
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={fetchDashboardData}
-            disabled={loading}
-          >
-            Retry
-          </Button>
-        </div>
-      )}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
