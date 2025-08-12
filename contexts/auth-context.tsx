@@ -100,11 +100,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Refs to prevent unnecessary re-renders
   const sessionRestoreAttempted = useRef(false)
   const profileFetchInProgress = useRef(false)
+  const lastProcessedSessionId = useRef<string | null>(null)
 
   // Memoized fetchUserProfile function
   const fetchUserProfile = useCallback(async (userId: string) => {
     if (profileFetchInProgress.current) {
       console.log('[AuthContext] fetchUserProfile: Already in progress, skipping')
+      return
+    }
+
+    // Prevent fetching profile for the same user multiple times
+    if (userProfile?.id === userId && userProfile) {
+      console.log('[AuthContext] fetchUserProfile: Profile already loaded for user:', userId)
       return
     }
 
@@ -172,7 +179,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Initialize auth state from cache first, then from session
   const initializeAuth = useCallback(async () => {
-    if (sessionRestoreAttempted.current) return
+    if (sessionRestoreAttempted.current) {
+      console.log('[AuthContext] initializeAuth: Already attempted, skipping')
+      return
+    }
     
     sessionRestoreAttempted.current = true
     console.log('[AuthContext] initializeAuth: Starting initialization')
@@ -231,7 +241,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize on mount
   useEffect(() => {
     initializeAuth()
+    
+    // Cleanup function to reset refs
+    return () => {
+      sessionRestoreAttempted.current = false
+      profileFetchInProgress.current = false
+      lastProcessedSessionId.current = null
+    }
   }, [initializeAuth])
+
+  // Reset refs when user changes
+  useEffect(() => {
+    if (!user) {
+      profileFetchInProgress.current = false
+      lastProcessedSessionId.current = null
+    }
+  }, [user])
 
   // Listen for auth changes
   useEffect(() => {
@@ -246,11 +271,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
       
+      // Prevent processing the same session multiple times
+      const currentSessionId = session?.user?.id || null
+      if (event === 'INITIAL_SESSION' && currentSessionId === lastProcessedSessionId.current) {
+        console.log('[AuthContext] onAuthStateChange: Skipping duplicate INITIAL_SESSION')
+        return
+      }
+      
+      // Additional safeguard: if this is an INITIAL_SESSION event and we're still loading, skip it
+      if (event === 'INITIAL_SESSION' && loading) {
+        console.log('[AuthContext] onAuthStateChange: Skipping INITIAL_SESSION during loading')
+        return
+      }
+      
       switch (event) {
         case 'SIGNED_IN':
         case 'TOKEN_REFRESHED':
           if (session?.user) {
             setUser(session.user)
+            lastProcessedSessionId.current = session.user.id
             await fetchUserProfile(session.user.id)
           }
           break
@@ -258,26 +297,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null)
           setUserProfile(null)
           setCachedAuth(null, null)
+          lastProcessedSessionId.current = null
           break
         case 'USER_UPDATED':
           if (session?.user) {
             setUser(session.user)
+            lastProcessedSessionId.current = session.user.id
             await fetchUserProfile(session.user.id)
           }
           break
-        default:
+        case 'INITIAL_SESSION':
+          // Handle initial session - just update user state without fetching profile
+          // Profile will be handled by initializeAuth
           setUser(session?.user ?? null)
-          if (session?.user) {
-            await fetchUserProfile(session.user.id)
-          } else {
-            setUserProfile(null)
-            setCachedAuth(null, null)
-          }
+          lastProcessedSessionId.current = currentSessionId
+          break
+        default:
+          // Only handle other events that we haven't explicitly handled
+          console.log('[AuthContext] onAuthStateChange: Unhandled event:', event)
+          break
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [fetchUserProfile, isInitialized])
+  }, [fetchUserProfile, isInitialized, loading])
 
   const signUp = useCallback(async (email: string, password: string, userData: SignUpData) => {
     try {
