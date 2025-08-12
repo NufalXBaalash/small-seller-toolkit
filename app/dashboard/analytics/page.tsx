@@ -51,7 +51,7 @@ export default function AnalyticsPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([])
   const [productStats, setProductStats] = useState<any[]>([])
-  const [pageLoading, setPageLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(false) // Start with false for better UX
   const [error, setError] = useState<string | null>(null)
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d")
   const { user, loading } = useAuth();

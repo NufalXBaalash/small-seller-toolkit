@@ -195,7 +195,7 @@ StatsCard.displayName = "StatsCard"
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [pageLoading, setPageLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(false) // Start with false for better UX
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)

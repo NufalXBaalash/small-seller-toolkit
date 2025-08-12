@@ -25,7 +25,7 @@ export default function SettingsPage() {
     business_name: string
     last_connected: string
   } | null>(null)
-  const [loadingInstagram, setLoadingInstagram] = useState(true)
+  const [loadingInstagram, setLoadingInstagram] = useState(false) // Start with false for better UX
   const [profileData, setProfileData] = useState({
     first_name: userProfile?.first_name || "",
     last_name: userProfile?.last_name || "",

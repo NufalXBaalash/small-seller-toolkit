@@ -168,10 +168,14 @@ QuickActionButton.displayName = "QuickActionButton"
 export default function Dashboard() {
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false)
   const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Start with false for better UX
   const [error, setError] = useState<string | null>(null)
   const { user, userProfile, loading: authLoading } = useAuth()
   const router = useRouter();
+  
+  // Cache for dashboard data
+  const dataCache = useRef<Map<string, { data: any; timestamp: number }>>(new Map())
+  const lastUserId = useRef<string | null>(null)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -186,12 +190,95 @@ export default function Dashboard() {
       return
     }
 
+    // Check cache first
+    const cached = dataCache.current.get(user.id)
+    const now = Date.now()
+    const cacheAge = cached ? now - cached.timestamp : Infinity
+    const cacheValid = cacheAge < 2 * 60 * 1000 // 2 minutes cache
+
+    if (cached && cacheValid && lastUserId.current === user.id) {
+      console.log('[Dashboard] Using cached data for user:', user.id)
+      // Process cached data
+      const dashboardData = cached.data
+      
+      // Quick stats calculation
+      const orders = dashboardData?.orders || []
+      const chats = dashboardData?.chats || []
+      const customers = dashboardData?.customers || []
+      const products = dashboardData?.products || []
+
+      // Fast stats calculation
+      const totalRevenue = orders.reduce((sum, order) => sum + (Number(order?.total_amount) || 0), 0)
+      const totalOrders = orders.length
+      const activeChats = chats.filter(chat => chat?.unread_count > 0).length
+      const totalCustomers = customers.length
+
+      // Quick recent activity (max 3 items)
+      const recentActivity: DashboardStats['recentActivity'] = []
+      
+      // Add orders first (max 2)
+      orders.slice(0, 2).forEach((order, index) => {
+        if (order) {
+          recentActivity.push({
+            id: `order-${order.id || index}`,
+            type: "order" as const,
+            title: `New order from ${order.customers?.name || "Customer"}`,
+            description: `$${Number(order.total_amount || 0).toFixed(2)} - ${order.status || "pending"}`,
+            time: getTimeAgo(order.created_at || new Date().toISOString()),
+            status: order.status || "pending",
+          })
+        }
+      })
+
+      // Add one unread chat if available
+      const unreadChat = chats.find(chat => chat?.unread_count > 0)
+      if (unreadChat && recentActivity.length < 3) {
+        recentActivity.push({
+          id: `message-${unreadChat.id}`,
+          type: "message" as const,
+          title: `New message from ${unreadChat.customers?.name || "Customer"}`,
+          description: unreadChat.last_message || "New message received",
+          time: getTimeAgo(unreadChat.created_at || new Date().toISOString()),
+          status: "unread",
+        })
+      }
+
+      // Add one low stock alert if available
+      const lowStockProduct = products.find(p => p.stock <= 5 && p.stock > 0)
+      if (lowStockProduct && recentActivity.length < 3) {
+        recentActivity.push({
+          id: `alert-${lowStockProduct.id}`,
+          type: "alert" as const,
+          title: "Low stock alert",
+          description: `${lowStockProduct.name} - ${lowStockProduct.stock} left`,
+          time: "1h ago",
+          status: "warning",
+        })
+      }
+
+      setStats({
+        totalRevenue,
+        totalOrders,
+        activeChats,
+        totalCustomers,
+        recentActivity
+      })
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)
 
       console.log('[Dashboard] Fetching data for user:', user.id)
       const dashboardData = await fetchUserDashboardData(user.id)
+      
+      // Cache the data
+      dataCache.current.set(user.id, {
+        data: dashboardData,
+        timestamp: Date.now()
+      })
+      lastUserId.current = user.id
       
       // Quick stats calculation
       const orders = dashboardData?.orders || []
@@ -259,19 +346,37 @@ export default function Dashboard() {
     } catch (err) {
       console.error("Error fetching dashboard data:", err)
       setError("Failed to load dashboard data. Please try again.")
+      
+      // Set fallback data to prevent complete failure
+      setStats({
+        totalRevenue: 0,
+        totalOrders: 0,
+        activeChats: 0,
+        totalCustomers: 0,
+        recentActivity: []
+      })
     } finally {
       setLoading(false)
     }
   }, [user?.id])
 
-  // Add a timeout to prevent infinite loading
+  // Add a timeout to prevent infinite loading - reduced to 5 seconds
   useEffect(() => {
     if (loading && user?.id) {
       const timeout = setTimeout(() => {
         console.warn('[Dashboard] Loading timeout reached, forcing loading to false')
         setLoading(false)
-        setError("Loading timeout. Please refresh the page.")
-      }, 10000) // 10 second timeout
+        setError("Loading timeout. Please try again.")
+        
+        // Set fallback data
+        setStats({
+          totalRevenue: 0,
+          totalOrders: 0,
+          activeChats: 0,
+          totalCustomers: 0,
+          recentActivity: []
+        })
+      }, 5000) // Reduced to 5 seconds
 
       return () => clearTimeout(timeout)
     }
@@ -335,72 +440,13 @@ export default function Dashboard() {
     return null // Let the useEffect handle redirect
   }
 
-  // Show skeleton loading while fetching data
-  if (loading) {
+  // Show minimal loading indicator only if we have no data and are loading
+  if (loading && !stats) {
     return (
-      <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
-            <div className="h-4 w-64 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="h-9 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-            <div className="h-9 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-          </div>
-        </div>
-
-        {/* Stats Cards Skeleton */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                <div className="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 w-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
-                <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Recent Activity Skeleton */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
-            <CardHeader>
-              <div className="h-6 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
-              <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center space-x-4">
-                    <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                      <div className="h-3 w-32 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                    </div>
-                    <div className="h-3 w-16 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="col-span-3">
-            <CardHeader>
-              <div className="h-6 w-24 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
-              <div className="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-9 w-full bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-              ))}
-            </CardContent>
-          </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     )

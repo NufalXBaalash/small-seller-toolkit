@@ -175,7 +175,7 @@ StatsCard.displayName = "StatsCard"
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([])
-  const [pageLoading, setPageLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(false) // Start with false for better UX
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [addProductModalOpen, setAddProductModalOpen] = useState(false)

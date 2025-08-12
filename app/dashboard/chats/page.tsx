@@ -256,7 +256,7 @@ export default function ChatsPage() {
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
-  const [pageLoading, setPageLoading] = useState(true)
+  const [pageLoading, setPageLoading] = useState(false) // Start with false for better UX
   const [messagesLoading, setMessagesLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
