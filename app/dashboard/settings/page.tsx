@@ -94,7 +94,7 @@ export default function SettingsPage() {
     try {
       console.log('Disconnecting Instagram for user:', user.id)
       // Call API to disconnect Instagram
-      const response = await fetch('/api/user/update-instagram', {
+      const response = await fetch('/api/instagram/connect', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

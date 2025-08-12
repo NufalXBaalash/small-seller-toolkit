@@ -110,7 +110,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
 
       // Update user's business with Instagram connection
       if (user) {
-        const updateResponse = await fetch("/api/user/update-instagram", {
+        const updateResponse = await fetch("/api/instagram/connect", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
