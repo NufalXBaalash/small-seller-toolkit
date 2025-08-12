@@ -404,6 +404,15 @@ export default function Dashboard() {
     }
   }, [user?.id, authLoading, fetchDashboardData, router])
 
+  // Ensure we always have stats to display
+  const displayStats = stats || {
+    totalRevenue: 0,
+    totalOrders: 0,
+    activeChats: 0,
+    totalCustomers: 0,
+    recentActivity: []
+  }
+
   // Memoized stats cards data
   const statsCards = useMemo(() => [
     {
@@ -465,15 +474,6 @@ export default function Dashboard() {
         </div>
       </div>
     )
-  }
-
-  // Ensure we always have stats to display
-  const displayStats = stats || {
-    totalRevenue: 0,
-    totalOrders: 0,
-    activeChats: 0,
-    totalCustomers: 0,
-    recentActivity: []
   }
 
   if (error) {
