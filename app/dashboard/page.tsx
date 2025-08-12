@@ -188,6 +188,7 @@ export default function Dashboard() {
       setLoading(true)
       setError(null)
 
+      console.log('[Dashboard] Fetching data for user:', user.id)
       const dashboardData = await fetchUserDashboardData(user.id)
       
       // Quick stats calculation
@@ -260,6 +261,19 @@ export default function Dashboard() {
       setLoading(false)
     }
   }, [user?.id])
+
+  // Add a timeout to prevent infinite loading
+  useEffect(() => {
+    if (loading && user?.id) {
+      const timeout = setTimeout(() => {
+        console.warn('[Dashboard] Loading timeout reached, forcing loading to false')
+        setLoading(false)
+        setError("Loading timeout. Please refresh the page.")
+      }, 10000) // 10 second timeout
+
+      return () => clearTimeout(timeout)
+    }
+  }, [loading, user?.id])
 
   // Use the visibility hook to refetch data when page becomes visible
   useRefetchOnVisibility(fetchDashboardData)

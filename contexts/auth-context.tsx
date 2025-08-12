@@ -68,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileFetchInProgress.current = false
       setLoading(false)
       setIsInitialized(true)
-    }, 8000) // Reduced to 8 seconds for faster response
+    }, 5000) // Reduced to 5 seconds for faster response
     
     try {
       console.log('[AuthContext] fetchUserProfile: Fetching profile for user:', userId)
@@ -83,76 +83,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
       
-      // Retry logic for profile fetch
-      let lastError = null;
-      for (let attempt = 1; attempt <= 2; attempt++) { // Reduced to 2 attempts
-        try {
-          console.log(`[AuthContext] fetchUserProfile: Attempt ${attempt}/2`);
+      // Single attempt with better error handling
+      try {
+        console.log('[AuthContext] fetchUserProfile: Attempting to fetch profile')
+        
+        const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
+
+        if (error) {
+          console.error('[AuthContext] fetchUserProfile: Error fetching profile:', error)
           
-          const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
-
-          if (error) {
-            console.error(`[AuthContext] fetchUserProfile: Attempt ${attempt} error:`, error)
-            lastError = error;
+          // Handle specific error cases
+          if (error.code === "PGRST116") {
+            // Profile doesn't exist - this might be a new user or trigger failed
+            console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), attempting to create profile')
             
-            // Handle specific error cases
-            if (error.code === "PGRST116") {
-              // Profile doesn't exist - this might be a new user or trigger failed
-              console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), attempting to create profile')
-              
-              // Try to create the profile
-              const { data: newProfile, error: createError } = await supabase
-                .from("users")
-                .insert([{ id: userId }])
-                .select()
-                .single()
+            // Try to create the profile
+            const { data: newProfile, error: createError } = await supabase
+              .from("users")
+              .insert([{ id: userId }])
+              .select()
+              .single()
 
-              if (createError) {
-                console.error('[AuthContext] fetchUserProfile: Failed to create profile:', createError)
-                // Continue to next attempt
-                continue
-              }
-
+            if (createError) {
+              console.error('[AuthContext] fetchUserProfile: Failed to create profile:', createError)
+              // Set profile to null and continue
+              setUserProfile(null)
+            } else {
               console.log('[AuthContext] fetchUserProfile: Profile created successfully')
               setUserProfile(newProfile)
-              break
             }
-            
-            // For other errors, wait a bit before retrying
-            if (attempt < 2) {
-              await new Promise(resolve => setTimeout(resolve, 1000))
-            }
-            continue
+          } else {
+            // For other errors, set profile to null
+            console.error('[AuthContext] fetchUserProfile: Profile fetch failed:', error)
+            setUserProfile(null)
           }
-
+        } else {
           // Success - clear timeout and set profile
-          if (loadingTimeoutRef.current) {
-            clearTimeout(loadingTimeoutRef.current)
-            loadingTimeoutRef.current = null
-          }
-          
           console.log('[AuthContext] fetchUserProfile: Profile fetched successfully')
           setUserProfile(data)
-          break
-        } catch (error) {
-          console.error(`[AuthContext] fetchUserProfile: Attempt ${attempt} exception:`, error)
-          lastError = error
-          
-          if (attempt < 2) {
-            await new Promise(resolve => setTimeout(resolve, 1000))
-          }
         }
-      }
-
-      // If all attempts failed
-      if (!profileFetchInProgress.current) {
-        console.error('[AuthContext] fetchUserProfile: All attempts failed:', lastError)
+      } catch (error) {
+        console.error('[AuthContext] fetchUserProfile: Exception during profile fetch:', error)
         setUserProfile(null)
       }
     } catch (error) {
       console.error('[AuthContext] fetchUserProfile: Unexpected error:', error)
       setUserProfile(null)
     } finally {
+      // Clear timeout and reset state
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
       profileFetchInProgress.current = false
       setLoading(false)
       setIsInitialized(true)
@@ -163,11 +145,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fallbackTimeout = setTimeout(() => {
       if (loading && isInitialized) {
-        console.warn('[AuthContext] Fallback timeout: Forcing loading to false after 15 seconds')
+        console.warn('[AuthContext] Fallback timeout: Forcing loading to false after 10 seconds')
         setLoading(false)
         setIsInitialized(true)
       }
-    }, 15000) // 15 second fallback
+    }, 10000) // 10 second fallback
 
     return () => {
       clearTimeout(fallbackTimeout)
@@ -176,12 +158,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Additional safety check for edge cases
   useEffect(() => {
-    // If we have a user but no profile after 5 seconds, assume profile doesn't exist
+    // If we have a user but no profile after 3 seconds, assume profile doesn't exist
     if (user && !userProfile && !loading && isInitialized) {
       const profileTimeout = setTimeout(() => {
-        console.log('[AuthContext] User exists but no profile after 5s, assuming profile is null')
+        console.log('[AuthContext] User exists but no profile after 3s, assuming profile is null')
         setUserProfile(null)
-      }, 5000)
+      }, 3000)
 
       return () => clearTimeout(profileTimeout)
     }

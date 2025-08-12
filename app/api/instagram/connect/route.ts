@@ -36,62 +36,109 @@ export async function POST(request: NextRequest) {
 
     console.log('User found, attempting to create/update Instagram connection')
 
-    // Update or insert Instagram connection data
-    const { data: connectionData, error: connectionError } = await supabase
-      .from("user_connections")
-      .upsert({
-        user_id: userId,
-        platform: "instagram",
-        platform_username: instagramUsername,
-        access_token: accessToken, // In production, encrypt this
-        business_name: businessName,
-        connected: connected || true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: "user_id,platform"
-      })
-      .select()
-      .single()
+    // Try to update user_connections table first
+    let connectionSuccess = false
+    let connectionData = null
 
-    if (connectionError) {
-      console.error("Error updating Instagram connection:", connectionError)
-      
-      // If the table doesn't exist, try updating the user profile directly
-      console.log('Trying fallback to user_profiles table')
-      const { data: profileData, error: profileError } = await supabase
-        .from("user_profiles")
-        .update({
-          instagram_username: instagramUsername,
-          instagram_connected: connected || true,
+    try {
+      const { data: connectionsData, error: connectionError } = await supabase
+        .from("user_connections")
+        .upsert({
+          user_id: userId,
+          platform: "instagram",
+          platform_username: instagramUsername,
+          access_token: accessToken, // In production, encrypt this
+          business_name: businessName,
+          connected: connected || true,
+          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: "user_id,platform"
         })
-        .eq("user_id", userId)
         .select()
         .single()
 
-      if (profileError) {
-        console.error('Profile update also failed:', profileError)
-        return NextResponse.json(
-          { error: "Failed to update Instagram connection" },
-          { status: 500 }
-        )
+      if (!connectionError) {
+        console.log('Instagram connection updated via user_connections table')
+        connectionSuccess = true
+        connectionData = connectionsData
+      } else {
+        console.log('user_connections table error:', connectionError)
       }
+    } catch (connectionsError) {
+      console.log('user_connections table not available:', connectionsError)
+    }
 
-      console.log('Instagram connection updated via user_profiles table')
+    // If user_connections table failed, try updating the user profile directly
+    if (!connectionSuccess) {
+      console.log('Trying fallback to user_profiles table')
+      
+      try {
+        // First check if user_profiles table exists and has the right columns
+        const { data: profileData, error: profileError } = await supabase
+          .from("user_profiles")
+          .update({
+            instagram_username: instagramUsername,
+            instagram_connected: connected || true,
+            updated_at: new Date().toISOString()
+          })
+          .eq("user_id", userId)
+          .select()
+          .single()
+
+        if (!profileError) {
+          console.log('Instagram connection updated via user_profiles table')
+          connectionSuccess = true
+          connectionData = profileData
+        } else {
+          console.log('user_profiles table error:', profileError)
+        }
+      } catch (profileError) {
+        console.log('user_profiles table not available:', profileError)
+      }
+    }
+
+    // If both tables failed, try updating the users table directly
+    if (!connectionSuccess) {
+      console.log('Trying fallback to users table')
+      
+      try {
+        const { data: userData, error: userUpdateError } = await supabase
+          .from("users")
+          .update({
+            instagram_username: instagramUsername,
+            instagram_connected: connected || true,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", userId)
+          .select()
+          .single()
+
+        if (!userUpdateError) {
+          console.log('Instagram connection updated via users table')
+          connectionSuccess = true
+          connectionData = userData
+        } else {
+          console.log('users table update error:', userUpdateError)
+        }
+      } catch (userError) {
+        console.log('users table update failed:', userError)
+      }
+    }
+
+    if (connectionSuccess) {
       return NextResponse.json({
         success: true,
         message: "Instagram connection updated successfully",
-        data: profileData
+        data: connectionData
       })
+    } else {
+      console.error("All connection update methods failed")
+      return NextResponse.json(
+        { error: "Failed to update Instagram connection. Please check your database setup." },
+        { status: 500 }
+      )
     }
-
-    console.log('Instagram connection updated via user_connections table')
-    return NextResponse.json({
-      success: true,
-      message: "Instagram connection updated successfully",
-      data: connectionData
-    })
 
   } catch (error) {
     console.error("Update Instagram connection error:", error)
