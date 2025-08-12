@@ -47,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Ref to track if a profile fetch is in progress
   const profileFetchInProgress = useRef(false)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const sessionRestoreAttempted = useRef(false)
 
   // Memoized fetchUserProfile function to prevent unnecessary re-renders
   const fetchUserProfile = useCallback(async (userId: string) => {
@@ -141,6 +142,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Enhanced session restoration function
+  const restoreSession = useCallback(async () => {
+    if (sessionRestoreAttempted.current) {
+      console.log('[AuthContext] restoreSession: Already attempted, skipping')
+      return
+    }
+
+    sessionRestoreAttempted.current = true
+    console.log('[AuthContext] restoreSession: Starting session restoration')
+
+    try {
+      // Get the current session
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error('[AuthContext] restoreSession: Error getting session:', error)
+        setUser(null)
+        setUserProfile(null)
+        setLoading(false)
+        setIsInitialized(true)
+        return
+      }
+
+      console.log('[AuthContext] restoreSession: Session result:', session ? 'Found' : 'Not found')
+      
+      if (session?.user) {
+        console.log('[AuthContext] restoreSession: User found, setting user state')
+        setUser(session.user)
+        await fetchUserProfile(session.user.id)
+      } else {
+        console.log('[AuthContext] restoreSession: No user in session')
+        setUser(null)
+        setUserProfile(null)
+        setLoading(false)
+        setIsInitialized(true)
+      }
+    } catch (error) {
+      console.error('[AuthContext] restoreSession: Exception during session restoration:', error)
+      setUser(null)
+      setUserProfile(null)
+      setLoading(false)
+      setIsInitialized(true)
+    }
+  }, [fetchUserProfile])
+
   // Fallback mechanism to ensure loading state is always resolved
   useEffect(() => {
     const fallbackTimeout = setTimeout(() => {
@@ -213,23 +259,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isInitialized, user, fetchUserProfile])
 
+  // Main authentication effect - improved session restoration
   useEffect(() => {
     let isMounted = true
     
-    // Get initial session
-    console.log('[AuthContext] useEffect: Get initial session')
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!isMounted) return
-      
-      console.log('[AuthContext] supabase.auth.getSession result:', session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchUserProfile(session.user.id)
-      } else {
-        setLoading(false)
-        setIsInitialized(true)
-      }
-    })
+    // Restore session on mount
+    console.log('[AuthContext] useEffect: Starting session restoration')
+    restoreSession()
 
     // Listen for auth changes
     const {
@@ -284,7 +320,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loadingTimeoutRef.current = null
       }
     }
-  }, [fetchUserProfile])
+  }, [restoreSession, fetchUserProfile])
 
   const signUp = useCallback(async (email: string, password: string, userData: SignUpData) => {
     try {

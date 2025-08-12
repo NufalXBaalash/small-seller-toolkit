@@ -24,7 +24,9 @@ import {
   Download,
   Zap,
   Loader2,
+  ArrowDownRight
 } from "lucide-react"
+import { AuthDebug } from "@/components/auth-debug"
 
 interface DashboardStats {
   totalRevenue: number
@@ -438,6 +440,9 @@ export default function Dashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Auth Debug - Temporary */}
+      <AuthDebug />
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

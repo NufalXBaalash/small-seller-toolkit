@@ -17,6 +17,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [isRedirecting, setIsRedirecting] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const hasRedirected = useRef(false)
+  const initialLoadComplete = useRef(false)
 
   useEffect(() => {
     // Clear any existing timeout
@@ -24,15 +25,20 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       clearTimeout(timeoutRef.current)
     }
 
-    // Only redirect if we haven't already redirected and user is not authenticated
-    if (!loading && !user && !isRedirecting && !hasRedirected.current) {
+    // Wait for initial load to complete before making any decisions
+    if (!initialLoadComplete.current && !loading) {
+      initialLoadComplete.current = true
+    }
+
+    // Only redirect if initial load is complete, user is not authenticated, and we haven't already redirected
+    if (initialLoadComplete.current && !loading && !user && !isRedirecting && !hasRedirected.current) {
       console.log('[ProtectedRoute] User not authenticated, redirecting to login')
       hasRedirected.current = true
       setIsRedirecting(true)
       // Use replace instead of push to prevent back button issues
       router.replace("/login")
-    } else if (loading) {
-      // Set a shorter timeout to prevent infinite loading
+    } else if (loading && initialLoadComplete.current) {
+      // Set a shorter timeout to prevent infinite loading, but only after initial load
       timeoutRef.current = setTimeout(() => {
         console.warn('[ProtectedRoute] Loading timeout reached, forcing redirect to login')
         if (!hasRedirected.current) {
