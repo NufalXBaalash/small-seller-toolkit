@@ -256,20 +256,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted) return
       
       console.log('[AuthContext] onAuthStateChange:', event, session?.user?.id)
-      setUser(session?.user ?? null)
-
-      if (session?.user) {
-        // If this is a new signup, the profile is created by the database trigger.
-        // We just need to fetch it.
-        if (event === "SIGNED_UP" as any) {
-          console.log('[AuthContext] New user signed up, fetching profile...')
-        }
-        await fetchUserProfile(session.user.id)
-      } else {
-        setUserProfile(null)
-        setLoading(false)
-        setIsInitialized(true)
+      
+      // Handle different auth events
+      switch (event) {
+        case 'SIGNED_IN':
+        case 'TOKEN_REFRESHED':
+          if (session?.user) {
+            setUser(session.user)
+            await fetchUserProfile(session.user.id)
+          }
+          break
+        case 'SIGNED_OUT':
+          setUser(null)
+          setUserProfile(null)
+          setLoading(false)
+          setIsInitialized(true)
+          break
+        case 'SIGNED_UP':
+          if (session?.user) {
+            setUser(session.user)
+            await fetchUserProfile(session.user.id)
+          }
+          break
+        default:
+          // For other events, just update the user state
+          setUser(session?.user ?? null)
+          if (session?.user) {
+            await fetchUserProfile(session.user.id)
+          } else {
+            setUserProfile(null)
+            setLoading(false)
+            setIsInitialized(true)
+          }
       }
+      
       setIsInitialized(true)
     })
 

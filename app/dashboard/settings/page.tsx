@@ -92,6 +92,7 @@ export default function SettingsPage() {
     if (!user?.id) return
     
     try {
+      console.log('Disconnecting Instagram for user:', user.id)
       // Call API to disconnect Instagram
       const response = await fetch('/api/user/update-instagram', {
         method: 'POST',
@@ -108,15 +109,20 @@ export default function SettingsPage() {
       })
 
       if (response.ok) {
+        const result = await response.json()
+        console.log('Instagram disconnected successfully:', result)
         setInstagramStatus(null)
         toast({
           title: "Instagram Disconnected",
           description: "Your Instagram account has been disconnected successfully.",
         })
       } else {
-        throw new Error('Failed to disconnect')
+        const errorData = await response.json()
+        console.error('Failed to disconnect Instagram:', errorData)
+        throw new Error(errorData.error || 'Failed to disconnect')
       }
     } catch (error) {
+      console.error('Error disconnecting Instagram:', error)
       toast({
         title: "Disconnect Failed",
         description: "Failed to disconnect Instagram. Please try again.",

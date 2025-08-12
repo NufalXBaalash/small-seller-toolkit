@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createServerClient } from "@/lib/supabase"
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +29,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Test database connection and tables
+    const supabase = createServerClient()
+    
+    // Test if user_connections table exists
+    let connectionsTableExists = false
+    try {
+      const { data: connections, error: connectionsError } = await supabase
+        .from('user_connections')
+        .select('*')
+        .limit(1)
+      
+      connectionsTableExists = !connectionsError
+      console.log('user_connections table test:', connectionsTableExists ? 'OK' : 'Missing')
+    } catch (e) {
+      connectionsTableExists = false
+      console.log('user_connections table test: Exception - Missing')
+    }
+
+    // Test if chats table exists
+    let chatsTableExists = false
+    try {
+      const { data: chats, error: chatsError } = await supabase
+        .from('chats')
+        .select('*')
+        .limit(1)
+      
+      chatsTableExists = !chatsError
+      console.log('chats table test:', chatsTableExists ? 'OK' : 'Missing')
+    } catch (e) {
+      chatsTableExists = false
+      console.log('chats table test: Exception - Missing')
+    }
+
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -41,7 +75,11 @@ export async function POST(request: NextRequest) {
       data: {
         username,
         isValid: true,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        database: {
+          user_connections: connectionsTableExists ? 'OK' : 'Missing',
+          chats: chatsTableExists ? 'OK' : 'Missing'
+        }
       }
     })
 

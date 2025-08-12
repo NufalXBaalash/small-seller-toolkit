@@ -110,7 +110,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
 
       // Update user's business with Instagram connection
       if (user) {
-        const { error } = await fetch("/api/user/update-instagram", {
+        const updateResponse = await fetch("/api/user/update-instagram", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -123,6 +123,14 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
             connected: true,
           }),
         })
+
+        if (!updateResponse.ok) {
+          const updateError = await updateResponse.json()
+          throw new Error(updateError.error || "Failed to update Instagram connection")
+        }
+
+        const updateData = await updateResponse.json()
+        console.log('Instagram connection updated successfully:', updateData)
       }
 
       setIsConnected(true)
