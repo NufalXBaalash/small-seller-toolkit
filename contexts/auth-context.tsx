@@ -101,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sessionRestoreAttempted = useRef(false)
   const profileFetchInProgress = useRef(false)
   const lastProcessedSessionId = useRef<string | null>(null)
+  const initializationComplete = useRef(false)
 
   // Memoized fetchUserProfile function
   const fetchUserProfile = useCallback(async (userId: string) => {
@@ -139,7 +140,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const result = await response.json()
               if (result.success && result.profile) {
                 setUserProfile(result.profile)
-                setCachedAuth(user, result.profile)
+                // Cache with current user if available, otherwise just cache the profile
+                if (user) {
+                  setCachedAuth(user, result.profile)
+                }
                 return
               }
             }
@@ -159,7 +163,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserProfile(null)
           } else {
             setUserProfile(newProfile)
-            setCachedAuth(user, newProfile)
+            // Cache with current user if available
+            if (user) {
+              setCachedAuth(user, newProfile)
+            }
           }
         } else {
           setUserProfile(null)
@@ -167,7 +174,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         console.log('[AuthContext] fetchUserProfile: Profile fetched successfully')
         setUserProfile(data)
-        setCachedAuth(user, data)
+        // Cache with current user if available
+        if (user) {
+          setCachedAuth(user, data)
+        }
       }
     } catch (error) {
       console.error('[AuthContext] fetchUserProfile: Exception:', error)
@@ -175,12 +185,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       profileFetchInProgress.current = false
     }
-  }, [user])
+  }, [userProfile, user]) // Keep user dependency for caching, but add userProfile to prevent unnecessary calls
 
   // Initialize auth state from cache first, then from session
   const initializeAuth = useCallback(async () => {
-    if (sessionRestoreAttempted.current) {
-      console.log('[AuthContext] initializeAuth: Already attempted, skipping')
+    if (sessionRestoreAttempted.current || initializationComplete.current) {
+      console.log('[AuthContext] initializeAuth: Already attempted or completed, skipping')
       return
     }
     
@@ -216,7 +226,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Only fetch profile if we don't have it cached or if user changed
         if (!cached?.userProfile || cached.user?.id !== session.user.id) {
-          await fetchUserProfile(session.user.id)
+          // Call fetchUserProfile directly without await to avoid circular dependency
+          fetchUserProfile(session.user.id)
         } else {
           // If we have cached profile and user hasn't changed, use cached data
           setUserProfile(cached.userProfile)
@@ -235,10 +246,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false)
       setIsInitialized(true)
+      initializationComplete.current = true
     }
-  }, [fetchUserProfile])
+  }, []) // Remove fetchUserProfile dependency
 
-  // Initialize on mount
+  // Initialize on mount - only run once
   useEffect(() => {
     initializeAuth()
     
@@ -247,8 +259,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionRestoreAttempted.current = false
       profileFetchInProgress.current = false
       lastProcessedSessionId.current = null
+      initializationComplete.current = false
     }
-  }, [initializeAuth])
+  }, []) // Remove initializeAuth dependency
 
   // Reset refs when user changes
   useEffect(() => {
@@ -281,6 +294,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Additional safeguard: if this is an INITIAL_SESSION event and we're still loading, skip it
       if (event === 'INITIAL_SESSION' && loading) {
         console.log('[AuthContext] onAuthStateChange: Skipping INITIAL_SESSION during loading')
+        return
+      }
+      
+      // If initialization is complete and this is an INITIAL_SESSION, skip it
+      if (event === 'INITIAL_SESSION' && initializationComplete.current) {
+        console.log('[AuthContext] onAuthStateChange: Skipping INITIAL_SESSION after initialization complete')
         return
       }
       
