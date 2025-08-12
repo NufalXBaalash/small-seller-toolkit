@@ -9,20 +9,30 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { MessageSquare, Bell, Shield, Smartphone, Zap, Save, Palette, User } from "lucide-react"
+import { MessageSquare, Bell, Shield, Smartphone, Zap, Save, Palette, User, Instagram, CheckCircle, XCircle } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/hooks/use-toast"
+import { InstagramConnectModal } from "@/components/instagram-connect-modal"
+import { getInstagramConnectionStatus } from "@/lib/supabase"
 
 export default function SettingsPage() {
-  const { userProfile, updateProfile } = useAuth()
+  const { userProfile, updateProfile, user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
+  const [instagramStatus, setInstagramStatus] = useState<{
+    connected: boolean
+    username: string
+    business_name: string
+    last_connected: string
+  } | null>(null)
+  const [loadingInstagram, setLoadingInstagram] = useState(true)
   const [profileData, setProfileData] = useState({
     first_name: userProfile?.first_name || "",
     last_name: userProfile?.last_name || "",
     business_name: userProfile?.business_name || "",
     phone_number: userProfile?.phone_number || "",
   })
+  const [instagramModalOpen, setInstagramModalOpen] = useState(false)
 
   // Update form data when userProfile changes
   useEffect(() => {
@@ -35,6 +45,25 @@ export default function SettingsPage() {
       })
     }
   }, [userProfile])
+
+  // Fetch Instagram connection status
+  useEffect(() => {
+    const fetchInstagramStatus = async () => {
+      if (!user?.id) return
+      
+      try {
+        setLoadingInstagram(true)
+        const status = await getInstagramConnectionStatus(user.id)
+        setInstagramStatus(status)
+      } catch (error) {
+        console.error('Error fetching Instagram status:', error)
+      } finally {
+        setLoadingInstagram(false)
+      }
+    }
+
+    fetchInstagramStatus()
+  }, [user?.id])
 
   const handleProfileUpdate = async () => {
     setIsLoading(true)
@@ -52,6 +81,57 @@ export default function SettingsPage() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleDisconnectInstagram = async () => {
+    if (!user?.id) return
+    
+    try {
+      // Call API to disconnect Instagram
+      const response = await fetch('/api/user/update-instagram', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          instagramUsername: instagramStatus?.username || '',
+          accessToken: '',
+          businessName: instagramStatus?.business_name || '',
+          connected: false
+        }),
+      })
+
+      if (response.ok) {
+        setInstagramStatus(null)
+        toast({
+          title: "Instagram Disconnected",
+          description: "Your Instagram account has been disconnected successfully.",
+        })
+      } else {
+        throw new Error('Failed to disconnect')
+      }
+    } catch (error) {
+      toast({
+        title: "Disconnect Failed",
+        description: "Failed to disconnect Instagram. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const refreshInstagramStatus = async () => {
+    if (!user?.id) return
+    
+    try {
+      setLoadingInstagram(true)
+      const status = await getInstagramConnectionStatus(user.id)
+      setInstagramStatus(status)
+    } catch (error) {
+      console.error('Error refreshing Instagram status:', error)
+    } finally {
+      setLoadingInstagram(false)
     }
   }
   return (
@@ -182,6 +262,59 @@ export default function SettingsPage() {
               <div className="flex items-center space-x-2">
                 <Badge variant="outline">Not Connected</Badge>
                 <Button size="sm">Connect</Button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="h-10 w-10 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-full flex items-center justify-center">
+                  <Instagram className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="font-medium">Instagram</p>
+                  <p className="text-sm text-muted-foreground">
+                    {instagramStatus?.connected 
+                      ? `Connected as @${instagramStatus.username}`
+                      : "Connect your Instagram account to manage DMs"
+                    }
+                  </p>
+                  {instagramStatus?.connected && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      Last connected: {new Date(instagramStatus.last_connected).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                {loadingInstagram ? (
+                  <Badge variant="outline">Loading...</Badge>
+                ) : instagramStatus?.connected ? (
+                  <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-200 dark:border-green-800">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Not Connected</Badge>
+                )}
+                {instagramStatus?.connected ? (
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={handleDisconnectInstagram}
+                    className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                  >
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Disconnect
+                  </Button>
+                ) : (
+                  <Button 
+                    size="sm" 
+                    onClick={() => setInstagramModalOpen(true)}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  >
+                    Connect Instagram
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -372,6 +505,13 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Instagram Connect Modal */}
+      <InstagramConnectModal 
+        open={instagramModalOpen} 
+        onOpenChange={setInstagramModalOpen} 
+        onSuccess={refreshInstagramStatus}
+      />
     </div>
   )
 }

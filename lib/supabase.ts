@@ -1028,3 +1028,38 @@ export const createServerClient = () => {
     }
   })
 }
+
+// Instagram integration functions
+export const getInstagramConnectionStatus = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_user_instagram_status', { user_id_param: userId })
+    
+    if (error) {
+      console.error('Error fetching Instagram status:', error)
+      return null
+    }
+    
+    return data?.[0] || null
+  } catch (error) {
+    console.error('Error in getInstagramConnectionStatus:', error)
+    return null
+  }
+}
+
+export const getInstagramChats = async (userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .rpc('get_instagram_chats', { user_id_param: userId })
+    
+    if (error) {
+      console.error('Error fetching Instagram chats:', error)
+      return []
+    }
+    
+    return data || []
+  } catch (error) {
+    console.error('Error in getInstagramChats:', error)
+    return []
+  }
+}

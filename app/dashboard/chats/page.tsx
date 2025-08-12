@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Search, Filter, MoreHorizontal, Phone, Video, Send, Paperclip, Smile, Loader2 } from "lucide-react"
+import { Search, Filter, MoreHorizontal, Phone, Video, Send, Paperclip, Smile, Loader2, Instagram, RefreshCw, MessageSquare } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 import { useDebounce } from "@/hooks/use-debounce"
@@ -28,6 +28,7 @@ interface Chat {
     email: string | null
     phone_number: string | null
   }
+  customer_username?: string // For Instagram chats
 }
 
 interface Message {
@@ -54,6 +55,49 @@ const getStatusColor = (status: string) => {
       return "bg-gray-100 dark:bg-gray-900/20 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-800"
   }
 }
+
+// Memoized platform badge component
+const PlatformBadge = React.memo(({ platform }: { platform: string }) => {
+  const getPlatformConfig = (platform: string) => {
+    switch (platform.toLowerCase()) {
+      case "instagram":
+        return {
+          icon: <Instagram className="h-3 w-3" />,
+          className: "bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 shadow-sm",
+          label: "Instagram"
+        }
+      case "whatsapp":
+        return {
+          icon: null,
+          className: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-200 dark:border-green-800",
+          label: "WhatsApp"
+        }
+      case "facebook":
+        return {
+          icon: null,
+          className: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800",
+          label: "Facebook"
+        }
+      default:
+        return {
+          icon: null,
+          className: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/20 dark:text-gray-200 dark:border-gray-800",
+          label: platform.charAt(0).toUpperCase() + platform.slice(1)
+        }
+    }
+  }
+
+  const config = getPlatformConfig(platform)
+  
+  return (
+    <Badge variant="outline" className={`text-xs border flex items-center gap-1 ${config.className}`}>
+      {config.icon}
+      {config.label}
+    </Badge>
+  )
+})
+
+PlatformBadge.displayName = "PlatformBadge"
 
 // Memoized time ago function
 const getTimeAgo = (dateString: string) => {
@@ -90,25 +134,45 @@ const ChatItem = React.memo(({
     <div className="relative flex-shrink-0">
       <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
         <AvatarImage
-          src={`/placeholder.svg?height=48&width=48&text=${chat.customers.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")}`}
+          src={`/placeholder.svg?height=48&width=48&text=${chat.platform === "instagram" && chat.customer_username
+            ? chat.customer_username.charAt(0).toUpperCase()
+            : chat.customers.name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")}`}
         />
-        <AvatarFallback className="bg-gradient-to-br from-navy-500 to-navy-600 text-white font-semibold text-xs sm:text-sm">
-          {chat.customers.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")}
+        <AvatarFallback className={`font-semibold text-xs sm:text-sm ${
+          chat.platform === "instagram" 
+            ? "bg-gradient-to-br from-purple-500 to-pink-600 text-white"
+            : "bg-gradient-to-br from-navy-500 to-navy-600 text-white"
+        }`}>
+          {chat.platform === "instagram" && chat.customer_username
+            ? chat.customer_username.charAt(0).toUpperCase()
+            : chat.customers.name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")}
         </AvatarFallback>
       </Avatar>
       {chat.status === "active" && (
-        <div className="absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 bg-green-500 border-2 border-white rounded-full"></div>
+        <div className={`absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 border-2 border-white rounded-full ${
+          chat.platform === "instagram" ? "bg-gradient-to-r from-purple-500 to-pink-500" : "bg-green-500"
+        }`}></div>
       )}
     </div>
     <div className="flex-1 min-w-0">
       <div className="flex items-center justify-between mb-1">
-        <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">{chat.customers.name}</p>
+        <div className="flex items-center space-x-2">
+          <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">
+            {chat.platform === "instagram" && chat.customer_username 
+              ? `@${chat.customer_username}` 
+              : chat.customers.name
+            }
+          </p>
+          {chat.platform === "instagram" && (
+            <div className="h-1.5 w-1.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
+          )}
+        </div>
         <div className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
           {chat.unread_count > 0 && (
             <Badge
@@ -125,9 +189,7 @@ const ChatItem = React.memo(({
         {chat.last_message || "No messages yet"}
       </p>
       <div className="flex items-center justify-between">
-        <Badge variant="outline" className="text-xs border">
-          {chat.platform}
-        </Badge>
+        <PlatformBadge platform={chat.platform} />
         <Badge className={`text-xs ${getStatusColor(chat.status)}`}>
           {chat.status.charAt(0).toUpperCase() + chat.status.slice(1)}
         </Badge>
@@ -139,11 +201,13 @@ const ChatItem = React.memo(({
 ChatItem.displayName = "ChatItem"
 
 // Memoized message component
-const MessageItem = React.memo(({ message }: { message: Message }) => (
+const MessageItem = React.memo(({ message, platform }: { message: Message; platform?: string }) => (
   <div className={`flex ${message.sender_type === 'business' ? 'justify-end' : 'justify-start'}`}>
     <div className={`rounded-2xl p-3 sm:p-4 max-w-xs shadow-sm ${
       message.sender_type === 'business' 
-        ? 'bg-gradient-to-r from-navy-600 to-navy-700 text-white rounded-br-md' 
+        ? platform === 'instagram' 
+          ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-br-md' 
+          : 'bg-gradient-to-r from-navy-600 to-navy-700 text-white rounded-br-md'
         : 'bg-gray-100 rounded-bl-md'
     }`}>
       <p className="text-xs sm:text-sm">{message.content}</p>
@@ -151,11 +215,16 @@ const MessageItem = React.memo(({ message }: { message: Message }) => (
         <span className="text-xs text-gray-500">
           {getTimeAgo(message.created_at)}
         </span>
-        {message.sender_type === 'auto' && (
-          <Badge variant="secondary" className="text-xs bg-white/20 text-white border-white/30">
-            Auto-Reply
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {message.sender_type === 'auto' && (
+            <Badge variant="secondary" className="text-xs bg-white/20 text-white border-white/30">
+              Auto-Reply
+            </Badge>
+          )}
+          {platform === 'instagram' && (
+            <div className="h-2 w-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"></div>
+          )}
+        </div>
       </div>
     </div>
   </div>
@@ -188,6 +257,7 @@ export default function ChatsPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [pageLoading, setPageLoading] = useState(true)
+  const [messagesLoading, setMessagesLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const { user, loading } = useAuth();
@@ -244,6 +314,7 @@ export default function ChatsPage() {
 
   const fetchMessages = useCallback(async (chatId: string) => {
     try {
+      setMessagesLoading(true)
       const data = await fetchChatMessages(chatId)
       setMessages(data)
     } catch (error) {
@@ -253,6 +324,8 @@ export default function ChatsPage() {
         description: "Please try again",
         variant: "destructive",
       })
+    } finally {
+      setMessagesLoading(false)
     }
   }, [])
 
@@ -261,16 +334,36 @@ export default function ChatsPage() {
 
     setIsSending(true)
     try {
-      const response = await fetch("/api/whatsapp/send-message", {
+      // Determine the API endpoint based on the platform
+      let apiEndpoint = "/api/whatsapp/send-message"
+      let requestBody: any = {
+        chatId: selectedChat.id,
+        message: newMessage,
+        userId: user?.id,
+      }
+
+      // For Instagram, we need to extract the recipient username from the chat ID
+      if (selectedChat.platform === "instagram") {
+        apiEndpoint = "/api/instagram/send-message"
+        // Extract username from chat ID format: instagram_${userId}_${recipientUsername}
+        const parts = selectedChat.id.split("_")
+        if (parts.length >= 3) {
+          const recipientUsername = parts.slice(2).join("_") // Handle usernames with underscores
+          requestBody = {
+            userId: user?.id,
+            recipientUsername: recipientUsername,
+            message: newMessage,
+            messageType: "text"
+          }
+        }
+      }
+
+      const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          chatId: selectedChat.id,
-          message: newMessage,
-          userId: user?.id,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {
@@ -431,6 +524,15 @@ export default function ChatsPage() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-3">
+          <Button 
+            variant="outline" 
+            className="font-medium bg-transparent text-sm sm:text-base"
+            onClick={fetchChats}
+            disabled={pageLoading}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${pageLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Button variant="outline" className="font-medium bg-transparent text-sm sm:text-base">
             <Filter className="mr-2 h-4 w-4" />
             Filter
@@ -460,7 +562,27 @@ export default function ChatsPage() {
           <CardContent className="space-y-2 sm:space-y-3 max-h-96 sm:max-h-none overflow-y-auto">
             {filteredChats.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                {debouncedSearchTerm ? "No chats found matching your search." : "No chats yet. Start a conversation to see them here."}
+                {debouncedSearchTerm ? (
+                  <div className="space-y-2">
+                    <Search className="h-8 w-8 mx-auto text-gray-400" />
+                    <p>No chats found matching your search.</p>
+                    <p className="text-sm">Try adjusting your search terms.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <MessageSquare className="h-8 w-8 mx-auto text-gray-400" />
+                    <p>No chats yet.</p>
+                    <p className="text-sm">Connect your platforms to start receiving messages.</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.location.href = '/dashboard/settings'}
+                      className="mt-2"
+                    >
+                      Go to Settings
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               filteredChats.map((chat) => (
@@ -481,97 +603,162 @@ export default function ChatsPage() {
         {/* Chat Window */}
         <Card className="lg:col-span-2 border-0 shadow-lg">
           <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between border-b bg-gray-50 space-y-3 sm:space-y-0">
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="relative flex-shrink-0">
-                <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
-                  <AvatarImage src="/placeholder.svg?height=48&width=48&text=MS" />
-                  <AvatarFallback className="bg-gradient-to-br from-navy-500 to-navy-600 text-white font-semibold">
-                    {selectedChat?.customers.name.split(" ").map(n => n[0]).join("") || "MS"}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 bg-green-500 border-2 border-white rounded-full"></div>
+            {selectedChat ? (
+              <>
+                <div className="flex items-center space-x-3 sm:space-x-4">
+                  <div className="relative flex-shrink-0">
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
+                      <AvatarImage src="/placeholder.svg?height=48&width=48&text=MS" />
+                      <AvatarFallback className={`font-semibold ${
+                        selectedChat.platform === "instagram" 
+                          ? "bg-gradient-to-br from-purple-500 to-pink-600 text-white"
+                          : "bg-gradient-to-br from-navy-500 to-navy-600 text-white"
+                      }`}>
+                        {selectedChat.platform === "instagram" && selectedChat?.customer_username
+                          ? selectedChat.customer_username.charAt(0).toUpperCase()
+                          : selectedChat?.customers.name.split(" ").map(n => n[0]).join("") || "MS"
+                        }
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className={`absolute -bottom-1 -right-1 h-3 w-3 sm:h-4 sm:w-4 border-2 border-white rounded-full ${
+                      selectedChat.platform === "instagram" ? "bg-gradient-to-r from-purple-500 to-pink-500" : "bg-green-500"
+                    }`}></div>
+                  </div>
+                  <div>
+                    <CardTitle className="text-base sm:text-lg font-bold">
+                      {selectedChat.platform === "instagram" && selectedChat?.customer_username
+                        ? `@${selectedChat.customer_username}`
+                        : selectedChat?.customers.name || "Select a chat"
+                      }
+                    </CardTitle>
+                    <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
+                      <PlatformBadge platform={selectedChat.platform} />
+                      {selectedChat.platform === "instagram" ? (
+                        <span className="text-purple-600 font-medium">Instagram DM</span>
+                      ) : (
+                        <span className="text-green-600 font-medium">Online</span>
+                      )}
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button size="sm" variant="outline" className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-transparent">
+                    <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-transparent">
+                    <Video className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-transparent">
+                    <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="h-10 w-10 sm:h-12 sm:w-12 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5 text-gray-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-base sm:text-lg font-bold text-gray-500">No Chat Selected</CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Choose a conversation from the left panel to start messaging
+                  </CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-base sm:text-lg font-bold">
-                  {selectedChat?.customers.name || "Select a chat"}
-                </CardTitle>
-                <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
-                  {selectedChat && (
-                    <>
-                      <Badge variant="outline" className="text-xs">
-                        {selectedChat.platform}
-                      </Badge>
-                      <span className="text-green-600 font-medium">Online</span>
-                    </>
-                  )}
-                </CardDescription>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button size="sm" variant="outline" className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-transparent">
-                <Phone className="h-3 w-3 sm:h-4 sm:w-4" />
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-transparent">
-                <Video className="h-3 w-3 sm:h-4 sm:w-4" />
-              </Button>
-              <Button size="sm" variant="outline" className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-transparent">
-                <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
-              </Button>
-            </div>
+            )}
           </CardHeader>
           <CardContent className="p-0">
             <div className="h-64 sm:h-80 md:h-96 overflow-y-auto p-4 sm:p-6 space-y-3 sm:space-y-4">
-              {messages.length === 0 ? (
+              {messagesLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center space-y-2">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+                    <p className="text-sm text-gray-500">Loading messages...</p>
+                  </div>
+                </div>
+              ) : messages.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {selectedChat ? "No messages yet. Start the conversation!" : "Select a chat to view messages."}
+                  {selectedChat ? (
+                    <div className="space-y-2">
+                      <MessageSquare className="h-8 w-8 mx-auto text-gray-400" />
+                      <p>No messages yet.</p>
+                      <p className="text-sm">
+                        {selectedChat.platform === 'instagram' 
+                          ? 'Start the conversation with your Instagram follower!'
+                          : 'Start the conversation!'
+                        }
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <MessageSquare className="h-8 w-8 mx-auto text-gray-400" />
+                      <p>Select a chat to view messages.</p>
+                      <p className="text-sm">Choose a conversation from the left panel.</p>
+                    </div>
+                  )}
                 </div>
               ) : (
-                messages.map((message) => (
-                  <MessageItem key={message.id} message={message} />
-                ))
+                <div className="space-y-3 sm:space-y-4">
+                  {messages.map((message) => (
+                    <MessageItem key={message.id} message={message} platform={selectedChat?.platform} />
+                  ))}
+                </div>
               )}
             </div>
 
             {/* Message Input */}
             <div className="border-t bg-gray-50 p-3 sm:p-4">
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                {quickReplyButtons.map((button) => (
-                  <QuickReplyButton key={button.text} {...button} />
-                ))}
-              </div>
+              {selectedChat ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    {quickReplyButtons.map((button) => (
+                      <QuickReplyButton key={button.text} {...button} />
+                    ))}
+                  </div>
 
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-transparent flex-shrink-0"
-                >
-                  <Paperclip className="h-3 w-3 sm:h-4 sm:w-4" />
-                </Button>
-                <div className="flex-1 relative">
-                  <Input
-                    placeholder="Type your message..."
-                    className="pr-10 sm:pr-12 border-gray-200 text-sm sm:text-base"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  />
-                  <Button size="sm" variant="ghost" className="absolute right-1 top-1 h-6 w-6 sm:h-8 sm:w-8 p-0">
-                    <Smile className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 w-8 sm:h-10 sm:w-10 p-0 bg-transparent flex-shrink-0"
+                    >
+                      <Paperclip className="h-3 w-3 sm:h-4 sm:w-4" />
+                    </Button>
+                    <div className="flex-1 relative">
+                      <Input
+                        placeholder={`Type your message to ${selectedChat.platform === 'instagram' ? '@' + selectedChat.customer_username : selectedChat.customers.name}...`}
+                        className="pr-10 sm:pr-12 border-gray-200 text-sm sm:text-base"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                      />
+                      <Button size="sm" variant="ghost" className="absolute right-1 top-1 h-6 w-6 sm:h-8 sm:w-8 p-0">
+                        <Smile className="h-3 w-3 sm:h-4 sm:w-4" />
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={sendMessage}
+                      disabled={isSending || !selectedChat}
+                      className={`h-8 sm:h-10 px-3 sm:px-4 ${
+                        selectedChat.platform === 'instagram'
+                          ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
+                          : 'bg-gradient-to-r from-navy-600 to-navy-700 hover:from-navy-700 hover:to-navy-800'
+                      }`}
+                    >
+                      {isSending ? (
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <MessageSquare className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                  <p className="text-sm">Select a chat to start messaging</p>
                 </div>
-                <Button
-                  onClick={sendMessage}
-                  disabled={isSending || !selectedChat}
-                  className="bg-gradient-to-r from-navy-600 to-navy-700 hover:from-navy-700 hover:to-navy-800 h-8 sm:h-10 px-3 sm:px-4"
-                >
-                  {isSending ? (
-                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-3 w-3 sm:h-4 sm:w-4" />
-                  )}
-                </Button>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
