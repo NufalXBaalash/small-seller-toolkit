@@ -18,6 +18,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const hasRedirected = useRef(false)
   const initialLoadComplete = useRef(false)
+  const lastUserRef = useRef<string | null>(null)
 
   useEffect(() => {
     // Clear any existing timeout
@@ -30,6 +31,11 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       initialLoadComplete.current = true
     }
 
+    // Check if user changed to prevent unnecessary redirects
+    const currentUserId = user?.id || null
+    const userChanged = lastUserRef.current !== currentUserId
+    lastUserRef.current = currentUserId
+
     // Only redirect if initial load is complete, user is not authenticated, and we haven't already redirected
     if (initialLoadComplete.current && !loading && !user && !isRedirecting && !hasRedirected.current) {
       console.log('[ProtectedRoute] User not authenticated, redirecting to login')
@@ -37,8 +43,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       setIsRedirecting(true)
       // Use replace instead of push to prevent back button issues
       router.replace("/login")
-    } else if (loading && initialLoadComplete.current) {
-      // Set a shorter timeout to prevent infinite loading, but only after initial load
+    } else if (loading && initialLoadComplete.current && userChanged) {
+      // Only set timeout if user actually changed and we're loading
       timeoutRef.current = setTimeout(() => {
         console.warn('[ProtectedRoute] Loading timeout reached, forcing redirect to login')
         if (!hasRedirected.current) {
@@ -46,7 +52,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           setIsRedirecting(true)
           router.replace("/login")
         }
-      }, 8000) // Reduced to 8 seconds
+      }, 4000) // Reduced to 4 seconds for faster response
     }
 
     return () => {
@@ -69,7 +75,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }, [user])
 
   // Show minimal loading state to prevent full page refresh feeling
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

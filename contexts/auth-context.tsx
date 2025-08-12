@@ -44,10 +44,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false)
   const router = useRouter()
   
-  // Ref to track if a profile fetch is in progress
+  // Refs to track state and prevent unnecessary re-renders
   const profileFetchInProgress = useRef(false)
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const sessionRestoreAttempted = useRef(false)
+  const lastUserRef = useRef<string | null>(null)
+  const lastProfileRef = useRef<string | null>(null)
 
   // Memoized fetchUserProfile function to prevent unnecessary re-renders
   const fetchUserProfile = useCallback(async (userId: string) => {
@@ -57,9 +59,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    // Check if we already have the profile for this user
+    if (lastProfileRef.current === userId && userProfile) {
+      console.log('[AuthContext] fetchUserProfile: Profile already cached for user:', userId)
+      return
+    }
+
     profileFetchInProgress.current = true
     
-    // Set a timeout to prevent infinite loading - reduced to 3 seconds
+    // Set a timeout to prevent infinite loading - reduced to 2 seconds
     if (loadingTimeoutRef.current) {
       clearTimeout(loadingTimeoutRef.current)
     }
@@ -69,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileFetchInProgress.current = false
       setLoading(false)
       setIsInitialized(true)
-    }, 3000) // Reduced to 3 seconds for faster response
+    }, 2000) // Reduced to 2 seconds for faster response
     
     try {
       console.log('[AuthContext] fetchUserProfile: Fetching profile for user:', userId)
@@ -112,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (result.success && result.profile) {
                   console.log('[AuthContext] fetchUserProfile: Profile created via API successfully')
                   setUserProfile(result.profile)
+                  lastProfileRef.current = userId
                   return
                 }
               }
@@ -133,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             } else {
               console.log('[AuthContext] fetchUserProfile: Profile created successfully')
               setUserProfile(newProfile)
+              lastProfileRef.current = userId
             }
           } else {
             // For other errors, set profile to null but don't fail auth
@@ -143,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Success - clear timeout and set profile
           console.log('[AuthContext] fetchUserProfile: Profile fetched successfully')
           setUserProfile(data)
+          lastProfileRef.current = userId
         }
       } catch (error) {
         console.error('[AuthContext] fetchUserProfile: Exception during profile fetch:', error)
@@ -163,9 +174,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
       setIsInitialized(true)
     }
-  }, [])
+  }, [userProfile])
 
-  // Enhanced session restoration function
+  // Enhanced session restoration function with caching
   const restoreSession = useCallback(async () => {
     if (sessionRestoreAttempted.current) {
       console.log('[AuthContext] restoreSession: Already attempted, skipping')
@@ -191,13 +202,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthContext] restoreSession: Session result:', session ? 'Found' : 'Not found')
       
       if (session?.user) {
+        // Check if we already have this user cached
+        if (lastUserRef.current === session.user.id && user) {
+          console.log('[AuthContext] restoreSession: User already cached, skipping profile fetch')
+          setLoading(false)
+          setIsInitialized(true)
+          return
+        }
+
         console.log('[AuthContext] restoreSession: User found, setting user state')
         setUser(session.user)
+        lastUserRef.current = session.user.id
         await fetchUserProfile(session.user.id)
       } else {
         console.log('[AuthContext] restoreSession: No user in session')
         setUser(null)
         setUserProfile(null)
+        lastUserRef.current = null
+        lastProfileRef.current = null
         setLoading(false)
         setIsInitialized(true)
       }
@@ -205,61 +227,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('[AuthContext] restoreSession: Exception during session restoration:', error)
       setUser(null)
       setUserProfile(null)
+      lastUserRef.current = null
+      lastProfileRef.current = null
       setLoading(false)
       setIsInitialized(true)
     }
-  }, [fetchUserProfile])
+  }, [fetchUserProfile, user])
 
-  // Fallback mechanism to ensure loading state is always resolved
+  // Reduced fallback timeout
   useEffect(() => {
     const fallbackTimeout = setTimeout(() => {
       if (loading && isInitialized) {
-        console.warn('[AuthContext] Fallback timeout: Forcing loading to false after 8 seconds')
+        console.warn('[AuthContext] Fallback timeout: Forcing loading to false after 5 seconds')
         setLoading(false)
         setIsInitialized(true)
       }
-    }, 8000) // Reduced to 8 seconds
+    }, 5000) // Reduced to 5 seconds
 
     return () => {
       clearTimeout(fallbackTimeout)
     }
   }, [loading, isInitialized])
 
-  // Remove the additional safety check that might conflict with profile fetch
-  // The profile fetch timeout should handle this case
-
-  // Handle page visibility changes with debouncing
+  // Optimized page visibility handling - only refresh if user changed
   useEffect(() => {
     let timeoutId: NodeJS.Timeout | null = null
     
     const handleVisibilityChange = () => {
       if (!document.hidden && isInitialized) {
-        console.log('[AuthContext] visibilitychange: Page became visible, refreshing auth state')
+        console.log('[AuthContext] visibilitychange: Page became visible')
         
         // Debounce the visibility change to prevent multiple rapid calls
         if (timeoutId) {
           clearTimeout(timeoutId)
         }
         
-        timeoutId = setTimeout(() => {
-          supabase.auth.getSession().then(({ data: { session } }) => {
-            console.log('[AuthContext] visibilitychange: getSession result:', session)
+        timeoutId = setTimeout(async () => {
+          const { data: { session } } = await supabase.auth.getSession()
+          console.log('[AuthContext] visibilitychange: getSession result:', session?.user?.id)
+          
+          // Only update if user actually changed
+          if (session?.user?.id !== lastUserRef.current) {
             if (session?.user && !user) {
               setUser(session.user)
+              lastUserRef.current = session.user.id
               fetchUserProfile(session.user.id)
             } else if (!session?.user && user) {
               // User was logged out while tab was inactive
               setUser(null)
               setUserProfile(null)
-              setLoading(false)
-              setIsInitialized(true)
-            } else if (!session?.user && !user) {
-              // No user in session and already logged out
+              lastUserRef.current = null
+              lastProfileRef.current = null
               setLoading(false)
               setIsInitialized(true)
             }
-          })
-        }, 100) // 100ms debounce
+          }
+        }, 200) // Increased debounce to 200ms
       }
     }
 
@@ -294,18 +317,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         case 'TOKEN_REFRESHED':
           if (session?.user) {
             setUser(session.user)
+            lastUserRef.current = session.user.id
             await fetchUserProfile(session.user.id)
           }
           break
         case 'SIGNED_OUT':
           setUser(null)
           setUserProfile(null)
+          lastUserRef.current = null
+          lastProfileRef.current = null
           setLoading(false)
           setIsInitialized(true)
           break
         case 'USER_UPDATED':
           if (session?.user) {
             setUser(session.user)
+            lastUserRef.current = session.user.id
             await fetchUserProfile(session.user.id)
           }
           break
@@ -313,9 +340,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // For other events, just update the user state
           setUser(session?.user ?? null)
           if (session?.user) {
+            lastUserRef.current = session.user.id
             await fetchUserProfile(session.user.id)
           } else {
             setUserProfile(null)
+            lastUserRef.current = null
+            lastProfileRef.current = null
             setLoading(false)
             setIsInitialized(true)
           }
@@ -457,6 +487,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clear local state first to prevent UI issues
       setUser(null)
       setUserProfile(null)
+      lastUserRef.current = null
+      lastProfileRef.current = null
       setLoading(false)
       setIsInitialized(true)
       
@@ -474,6 +506,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Even if there's an error, clear local state and redirect
       setUser(null)
       setUserProfile(null)
+      lastUserRef.current = null
+      lastProfileRef.current = null
       setLoading(false)
       setIsInitialized(true)
       router.push("/")
