@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase"
 
+// GET method for debugging and testing
 export async function GET() {
   return NextResponse.json({
     success: true,
-    message: "Instagram connect endpoint is accessible",
+    message: "Instagram connect-instagram endpoint is accessible",
     timestamp: new Date().toISOString(),
-    endpoint: "/api/instagram/connect"
+    endpoint: "/api/instagram/connect-instagram"
   })
 }
 
+// POST method for Instagram connection
 export async function POST(request: NextRequest) {
   try {
-    console.log('Instagram connect API called')
+    console.log('Instagram connect-instagram API called')
     const { userId, instagramUsername, accessToken, businessName, connected } = await request.json()
 
     console.log('Request data:', { userId, instagramUsername, businessName, connected })
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
           user_id: userId,
           platform: "instagram",
           platform_username: instagramUsername,
-          access_token: accessToken,
+          access_token: accessToken, // In production, encrypt this
           business_name: businessName,
           connected: connected || true,
           created_at: new Date().toISOString(),
@@ -83,6 +85,7 @@ export async function POST(request: NextRequest) {
       console.log('Trying fallback to user_profiles table')
       
       try {
+        // First check if user_profiles table exists and has the right columns
         const { data: profileData, error: profileError } = await supabase
           .from("user_profiles")
           .update({

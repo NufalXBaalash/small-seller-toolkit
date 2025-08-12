@@ -110,19 +110,39 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
 
       // Update user's business with Instagram connection
       if (user) {
-        const updateResponse = await fetch("/api/instagram/connect", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            instagramUsername: instagramUsername,
-            accessToken: accessToken,
-            businessName: businessName,
-            connected: true,
-          }),
-        })
+        // Try the main endpoint first, then fallback to alternative
+        let updateResponse
+        try {
+          updateResponse = await fetch("/api/instagram/connect", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              instagramUsername: instagramUsername,
+              accessToken: accessToken,
+              businessName: businessName,
+              connected: true,
+            }),
+          })
+        } catch (error) {
+          console.log('Main endpoint failed, trying alternative:', error)
+          // Fallback to alternative endpoint
+          updateResponse = await fetch("/api/instagram/connect-instagram", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              instagramUsername: instagramUsername,
+              accessToken: accessToken,
+              businessName: businessName,
+              connected: true,
+            }),
+          })
+        }
 
         if (!updateResponse.ok) {
           const updateError = await updateResponse.json()

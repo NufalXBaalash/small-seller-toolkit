@@ -93,20 +93,39 @@ export default function SettingsPage() {
     
     try {
       console.log('Disconnecting Instagram for user:', user.id)
-      // Call API to disconnect Instagram
-      const response = await fetch('/api/instagram/connect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          instagramUsername: instagramStatus?.username || '',
-          accessToken: '',
-          businessName: instagramStatus?.business_name || '',
-          connected: false
-        }),
-      })
+      // Call API to disconnect Instagram - try main endpoint first, then fallback
+      let response
+      try {
+        response = await fetch('/api/instagram/connect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            instagramUsername: instagramStatus?.username || '',
+            accessToken: '',
+            businessName: instagramStatus?.business_name || '',
+            connected: false
+          }),
+        })
+      } catch (error) {
+        console.log('Main endpoint failed, trying alternative:', error)
+        // Fallback to alternative endpoint
+        response = await fetch('/api/instagram/connect-instagram', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            instagramUsername: instagramStatus?.username || '',
+            accessToken: '',
+            businessName: instagramStatus?.business_name || '',
+            connected: false
+          }),
+        })
+      }
 
       if (response.ok) {
         const result = await response.json()
