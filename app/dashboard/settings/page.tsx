@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
-import { MessageSquare, Bell, Shield, Smartphone, Zap, Save, Palette, User, Instagram, CheckCircle, XCircle } from "lucide-react"
+import { MessageSquare, Bell, Shield, Smartphone, Zap, Save, Palette, User, Instagram, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/hooks/use-toast"
@@ -53,10 +53,14 @@ export default function SettingsPage() {
       
       try {
         setLoadingInstagram(true)
+        console.log('Fetching Instagram status for user:', user.id)
         const status = await getInstagramConnectionStatus(user.id)
+        console.log('Instagram status result:', status)
         setInstagramStatus(status)
       } catch (error) {
         console.error('Error fetching Instagram status:', error)
+        // Don't show error to user, just set status to null (not connected)
+        setInstagramStatus(null)
       } finally {
         setLoadingInstagram(false)
       }
@@ -297,23 +301,47 @@ export default function SettingsPage() {
                   <Badge variant="outline">Not Connected</Badge>
                 )}
                 {instagramStatus?.connected ? (
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={handleDisconnectInstagram}
-                    className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
-                  >
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Disconnect
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={refreshInstagramStatus}
+                      disabled={loadingInstagram}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${loadingInstagram ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleDisconnectInstagram}
+                      className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                    >
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Disconnect
+                    </Button>
+                  </div>
                 ) : (
-                  <Button 
-                    size="sm" 
-                    onClick={() => setInstagramModalOpen(true)}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                  >
-                    Connect Instagram
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={refreshInstagramStatus}
+                      disabled={loadingInstagram}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${loadingInstagram ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setInstagramModalOpen(true)}
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    >
+                      Connect Instagram
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>

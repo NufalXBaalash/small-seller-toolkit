@@ -1032,12 +1032,33 @@ export const createServerClient = () => {
 // Instagram integration functions
 export const getInstagramConnectionStatus = async (userId: string) => {
   try {
+    // First try to use the RPC function
     const { data, error } = await supabase
       .rpc('get_user_instagram_status', { user_id_param: userId })
     
     if (error) {
-      console.error('Error fetching Instagram status:', error)
-      return null
+      console.log('RPC function not available, trying fallback:', error)
+      
+      // Fallback: check if user_connections table exists and query directly
+      try {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('user_connections')
+          .select('connected, platform_username, business_name, updated_at')
+          .eq('user_id', userId)
+          .eq('platform', 'instagram')
+          .eq('connected', true)
+          .single()
+        
+        if (fallbackError) {
+          console.log('Fallback query failed:', fallbackError)
+          return null
+        }
+        
+        return fallbackData
+      } catch (fallbackErr) {
+        console.log('Fallback query exception:', fallbackErr)
+        return null
+      }
     }
     
     return data?.[0] || null
@@ -1053,8 +1074,27 @@ export const getInstagramChats = async (userId: string) => {
       .rpc('get_instagram_chats', { user_id_param: userId })
     
     if (error) {
-      console.error('Error fetching Instagram chats:', error)
-      return []
+      console.log('Instagram chats RPC not available, trying fallback:', error)
+      
+      // Fallback: query chats table directly
+      try {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('chats')
+          .select('id, customer_username, last_message, unread_count, updated_at')
+          .eq('user_id', userId)
+          .eq('platform', 'instagram')
+          .order('updated_at', { ascending: false })
+        
+        if (fallbackError) {
+          console.log('Fallback chats query failed:', fallbackError)
+          return []
+        }
+        
+        return fallbackData || []
+      } catch (fallbackErr) {
+        console.log('Fallback chats query exception:', fallbackErr)
+        return []
+      }
     }
     
     return data || []
