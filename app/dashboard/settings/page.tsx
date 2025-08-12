@@ -112,7 +112,7 @@ export default function SettingsPage() {
       } catch (error) {
         console.log('Main endpoint failed, trying alternative:', error)
         // Fallback to alternative endpoint
-        response = await fetch('/api/instagram/connect-instagram', {
+        response = await fetch('/api/instagram/connect-v2', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

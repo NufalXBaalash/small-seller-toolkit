@@ -4,15 +4,15 @@ import { createServerClient } from "@/lib/supabase"
 export async function GET() {
   return NextResponse.json({
     success: true,
-    message: "Instagram connect endpoint is accessible",
+    message: "Instagram connect-v2 endpoint is accessible",
     timestamp: new Date().toISOString(),
-    endpoint: "/api/instagram/connect"
+    endpoint: "/api/instagram/connect-v2"
   })
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Instagram connect API called')
+    console.log('Instagram connect-v2 API called')
     const { userId, instagramUsername, accessToken, businessName, connected } = await request.json()
 
     console.log('Request data:', { userId, instagramUsername, businessName, connected })
