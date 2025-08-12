@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     profileFetchInProgress.current = true
     
-    // Set a timeout to prevent infinite loading
+    // Set a timeout to prevent infinite loading - reduced to 3 seconds
     if (loadingTimeoutRef.current) {
       clearTimeout(loadingTimeoutRef.current)
     }
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       profileFetchInProgress.current = false
       setLoading(false)
       setIsInitialized(true)
-    }, 5000) // Reduced to 5 seconds for faster response
+    }, 3000) // Reduced to 3 seconds for faster response
     
     try {
       console.log('[AuthContext] fetchUserProfile: Fetching profile for user:', userId)
@@ -98,7 +98,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Profile doesn't exist - this might be a new user or trigger failed
             console.log('[AuthContext] fetchUserProfile: Profile not found (PGRST116), attempting to create profile')
             
-            // Try to create the profile
+            // Try to create the profile using the API endpoint first
+            try {
+              const response = await fetch('/api/fix-user-profile', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                }
+              })
+              
+              if (response.ok) {
+                const result = await response.json()
+                if (result.success && result.profile) {
+                  console.log('[AuthContext] fetchUserProfile: Profile created via API successfully')
+                  setUserProfile(result.profile)
+                  return
+                }
+              }
+            } catch (apiError) {
+              console.warn('[AuthContext] fetchUserProfile: API profile creation failed, trying direct insert:', apiError)
+            }
+            
+            // Fallback to direct insert if API fails
             const { data: newProfile, error: createError } = await supabase
               .from("users")
               .insert([{ id: userId }])
@@ -107,14 +128,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (createError) {
               console.error('[AuthContext] fetchUserProfile: Failed to create profile:', createError)
-              // Set profile to null and continue
+              // Set profile to null and continue - don't fail the auth
               setUserProfile(null)
             } else {
               console.log('[AuthContext] fetchUserProfile: Profile created successfully')
               setUserProfile(newProfile)
             }
           } else {
-            // For other errors, set profile to null
+            // For other errors, set profile to null but don't fail auth
             console.error('[AuthContext] fetchUserProfile: Profile fetch failed:', error)
             setUserProfile(null)
           }
@@ -125,10 +146,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('[AuthContext] fetchUserProfile: Exception during profile fetch:', error)
+        // Don't fail auth if profile fetch fails
         setUserProfile(null)
       }
     } catch (error) {
       console.error('[AuthContext] fetchUserProfile: Unexpected error:', error)
+      // Don't fail auth if profile fetch fails
       setUserProfile(null)
     } finally {
       // Clear timeout and reset state
@@ -191,29 +214,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fallbackTimeout = setTimeout(() => {
       if (loading && isInitialized) {
-        console.warn('[AuthContext] Fallback timeout: Forcing loading to false after 10 seconds')
+        console.warn('[AuthContext] Fallback timeout: Forcing loading to false after 8 seconds')
         setLoading(false)
         setIsInitialized(true)
       }
-    }, 10000) // 10 second fallback
+    }, 8000) // Reduced to 8 seconds
 
     return () => {
       clearTimeout(fallbackTimeout)
     }
   }, [loading, isInitialized])
 
-  // Additional safety check for edge cases
-  useEffect(() => {
-    // If we have a user but no profile after 3 seconds, assume profile doesn't exist
-    if (user && !userProfile && !loading && isInitialized) {
-      const profileTimeout = setTimeout(() => {
-        console.log('[AuthContext] User exists but no profile after 3s, assuming profile is null')
-        setUserProfile(null)
-      }, 3000)
-
-      return () => clearTimeout(profileTimeout)
-    }
-  }, [user, userProfile, loading, isInitialized])
+  // Remove the additional safety check that might conflict with profile fetch
+  // The profile fetch timeout should handle this case
 
   // Handle page visibility changes with debouncing
   useEffect(() => {
@@ -290,7 +303,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false)
           setIsInitialized(true)
           break
-        case 'SIGNED_UP':
+        case 'USER_UPDATED':
           if (session?.user) {
             setUser(session.user)
             await fetchUserProfile(session.user.id)
