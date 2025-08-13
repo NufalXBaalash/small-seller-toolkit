@@ -77,8 +77,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Instagram connection found:', instagramConnection)
-
-    console.log('Instagram connection found:', instagramConnection.platform_username)
+    console.log('Instagram connection platform_username:', instagramConnection.platform_username)
 
     // In Test Mode, we'll create mock conversations since we can't access real DMs
     // In production, you would use the Instagram Graph API to fetch real conversations
@@ -164,68 +163,74 @@ export async function GET(request: NextRequest) {
     
     for (const conversation of mockConversations) {
       try {
-        // Check if chat already exists
-        let { data: existingChat, error: chatError } = await supabase
-          .from('chats')
-          .select('*')
-          .eq('user_id', authUser.id)
-          .eq('platform', 'instagram')
-          .eq('customer_username', conversation.customer_username)
-          .single()
+                 // Check if chat already exists
+         let { data: existingChat, error: chatError } = await supabase
+           .from('chats')
+           .select('*')
+           .eq('user_id', authUser.id)
+           .eq('platform', 'instagram')
+           .eq('customer_username', conversation.customer_username)
+           .single()
 
-        let chatId: string
+         console.log(`Checking for existing chat for ${conversation.customer_username}:`, { existingChat, chatError })
 
-        if (chatError || !existingChat) {
-          // First, create a customer record for Instagram user
-          let customerId: string | null = null
-          try {
-            const { data: customer, error: customerError } = await supabase
-              .from('customers')
-              .insert({
-                user_id: authUser.id,
-                name: `@${conversation.customer_username}`,
-                email: null,
-                phone_number: null,
-                platform: 'instagram',
-                platform_username: conversation.customer_username,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-              })
-              .select('id')
-              .single()
+         let chatId: string
 
-            if (!customerError && customer) {
-              customerId = customer.id
-              console.log('Created customer record for Instagram user:', customerId)
-            }
-          } catch (customerError) {
-            console.log('Failed to create customer record, continuing with null customer_id:', customerError)
-          }
+         if (chatError || !existingChat) {
+                     // First, create a customer record for Instagram user
+           let customerId: string | null = null
+           try {
+             console.log(`Creating customer record for ${conversation.customer_username}...`)
+             const { data: customer, error: customerError } = await supabase
+               .from('customers')
+               .insert({
+                 user_id: authUser.id,
+                 name: `@${conversation.customer_username}`,
+                 email: null,
+                 phone_number: null,
+                 platform: 'instagram',
+                 platform_username: conversation.customer_username,
+                 created_at: new Date().toISOString(),
+                 updated_at: new Date().toISOString()
+               })
+               .select('id')
+               .single()
 
-          // Create new chat
-          const { data: newChat, error: createChatError } = await supabase
-            .from('chats')
-            .insert({
-              user_id: authUser.id,
-              customer_id: customerId,
-              platform: 'instagram',
-              customer_username: conversation.customer_username,
-              last_message: conversation.last_message,
-              unread_count: conversation.unread_count,
-              status: conversation.status,
-              created_at: conversation.created_at,
-              updated_at: conversation.updated_at
-            })
-            .select()
-            .single()
+             if (!customerError && customer) {
+               customerId = customer.id
+               console.log('Created customer record for Instagram user:', customerId)
+             } else {
+               console.log('Customer creation error:', customerError)
+             }
+           } catch (customerError) {
+             console.log('Failed to create customer record, continuing with null customer_id:', customerError)
+           }
 
-          if (createChatError) {
-            console.log('Failed to create chat:', createChatError)
-            continue
-          }
+                     // Create new chat
+           console.log(`Creating new chat for ${conversation.customer_username}...`)
+           const { data: newChat, error: createChatError } = await supabase
+             .from('chats')
+             .insert({
+               user_id: authUser.id,
+               customer_id: customerId,
+               platform: 'instagram',
+               customer_username: conversation.customer_username,
+               last_message: conversation.last_message,
+               unread_count: conversation.unread_count,
+               status: conversation.status,
+               created_at: conversation.created_at,
+               updated_at: conversation.updated_at
+             })
+             .select()
+             .single()
 
-          chatId = newChat.id
-          console.log('Created new Instagram chat:', chatId)
+           if (createChatError) {
+             console.log('Failed to create chat:', createChatError)
+             continue
+           }
+
+           chatId = newChat.id
+           console.log('Created new Instagram chat:', chatId)
         } else {
           // Update existing chat
           const { error: updateChatError } = await supabase

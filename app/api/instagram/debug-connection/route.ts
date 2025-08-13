@@ -64,6 +64,9 @@ export async function GET(request: NextRequest) {
       .eq('user_id', authUser.id)
       .eq('platform', 'instagram')
 
+    console.log('User connections data:', userConnections)
+    console.log('User connections error:', connectionsError)
+
     // Check users table
     const { data: userData, error: userError } = await supabase
       .from('users')

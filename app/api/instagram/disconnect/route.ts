@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
           connected: false,
           access_token: null,
           refresh_token: null,
-          expires_at: null,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', authUser.id)
