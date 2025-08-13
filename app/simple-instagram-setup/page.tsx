@@ -282,7 +282,6 @@ export default function SimpleInstagramSetupPage() {
       <Card>
         <CardHeader>
           <CardTitle>Next Steps</CardTitle>
-        </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
