@@ -249,6 +249,46 @@ export default function SettingsPage() {
       setLoadingInstagram(false)
     }
   }
+
+  const handleTestConnectionData = async () => {
+    if (!user?.id) return
+    try {
+      setLoadingInstagram(true)
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to test connection data",
+          variant: "destructive",
+        })
+        return
+      }
+      const response = await fetch('/api/instagram/test-connection-data', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Test connection data:', data)
+        toast({
+          title: "Test Complete",
+          description: "Check console for raw connection data",
+        })
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to test connection data")
+      }
+    } catch (error) {
+      console.error("Error testing connection data:", error)
+      toast({
+        title: "Test Failed",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingInstagram(false)
+    }
+  }
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-background">
       <div className="flex items-center justify-between space-y-2">
@@ -451,6 +491,16 @@ export default function SettingsPage() {
                     >
                       <RefreshCw className="h-3 w-3 mr-1" />
                       Debug
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleTestConnectionData}
+                      disabled={loadingInstagram}
+                      className="text-yellow-600 border-yellow-200 hover:bg-yellow-50 dark:text-yellow-400 dark:border-yellow-800 dark:hover:bg-yellow-900/20"
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Test Data
                     </Button>
                     <Button 
                       size="sm" 

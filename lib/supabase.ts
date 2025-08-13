@@ -1090,6 +1090,7 @@ export const getInstagramConnectionStatus = async (userId: string) => {
           return null
         }
         
+        console.log('Instagram connection status fallback data:', fallbackData)
         return fallbackData
       } catch (fallbackErr) {
         console.log('Fallback query exception:', fallbackErr)
