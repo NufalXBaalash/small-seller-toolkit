@@ -27,6 +27,8 @@ export const INSTAGRAM_ENDPOINTS = {
   DEBUG_USER: '/api/instagram/debug-user',
   TEST_AUTH: '/api/instagram/test-auth',
   SEND_MESSAGE: '/api/instagram/send-message',
+  SEND_DM: '/api/instagram/send-dm',
+  FETCH_DMS: '/api/instagram/fetch-dms',
   WEBHOOK: '/api/instagram/webhook',
 } as const
 

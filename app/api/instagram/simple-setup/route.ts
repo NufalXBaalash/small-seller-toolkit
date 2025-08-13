@@ -176,7 +176,52 @@ export async function POST() {
       results.push({ statement: 'Create RLS policies', success: false, error: e, warning: true })
     }
 
-    // 5. Verify the setup
+    // 5. Add Instagram DM support
+    try {
+      console.log('Adding Instagram DM support...')
+      const { error } = await supabase.rpc('exec_sql', {
+        sql: `
+          -- Add customer_username column to chats table for Instagram DMs
+          ALTER TABLE chats ADD COLUMN IF NOT EXISTS customer_username TEXT;
+          
+          -- Create index for better performance on Instagram chats
+          CREATE INDEX IF NOT EXISTS idx_chats_platform_customer_username 
+          ON chats(platform, customer_username) 
+          WHERE platform = 'instagram';
+          
+          -- Update existing Instagram chats to have customer_username if they don't
+          UPDATE chats 
+          SET customer_username = 'instagram_user_' || id::text 
+          WHERE platform = 'instagram' AND customer_username IS NULL;
+        `
+      })
+      
+      if (error) {
+        console.log('Error adding Instagram DM support:', error)
+        // Try alternative method
+        const { error: altError } = await supabase.rpc('exec_sql', {
+          sql: `
+            ALTER TABLE chats ADD COLUMN IF NOT EXISTS customer_username TEXT;
+          `
+        })
+        
+        if (altError) {
+          console.log('Alternative method failed:', altError)
+          results.push({ statement: 'Add Instagram DM support', success: false, error: altError.message, warning: true })
+        } else {
+          results.push({ statement: 'Add Instagram DM support', success: true })
+          console.log('Instagram DM support added successfully')
+        }
+      } else {
+        results.push({ statement: 'Add Instagram DM support', success: true })
+        console.log('Instagram DM support added successfully')
+      }
+    } catch (e) {
+      console.error('Failed to add Instagram DM support:', e)
+      results.push({ statement: 'Add Instagram DM support', success: false, error: e, warning: true })
+    }
+
+    // 6. Verify the setup
     try {
       console.log('Verifying setup...')
       

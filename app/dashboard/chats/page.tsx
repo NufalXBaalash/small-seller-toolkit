@@ -13,6 +13,8 @@ import { toast } from "@/components/ui/use-toast"
 import { useRefetchOnVisibility } from "@/hooks/use-page-visibility"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useRouter } from "next/navigation"
+import { getInstagramApiUrl } from "@/lib/api-config"
+import { supabase } from "@/lib/supabase"
 
 interface Chat {
   id: string
@@ -329,12 +331,59 @@ export default function ChatsPage() {
     }
   }, [])
 
+  const fetchInstagramDMs = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to fetch Instagram DMs",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch(getInstagramApiUrl('FETCH_DMS'), {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to fetch Instagram DMs")
+      }
+
+      const data = await response.json()
+      
+      if (data.success) {
+        // Refresh chats to include the new Instagram conversations
+        await fetchChats()
+        toast({
+          title: "Instagram DMs Fetched",
+          description: `Successfully loaded ${data.data.total_conversations} conversations`,
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching Instagram DMs:", error)
+      toast({
+        title: "Failed to fetch Instagram DMs",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
+    }
+  }, [user?.id, fetchChats])
+
   const sendMessage = useCallback(async () => {
     if (!newMessage.trim() || !selectedChat || isSending) return
 
     setIsSending(true)
     try {
-      // Determine the API endpoint based on the platform
       let apiEndpoint = "/api/whatsapp/send-message"
       let requestBody: any = {
         chatId: selectedChat.id,
@@ -342,22 +391,56 @@ export default function ChatsPage() {
         userId: user?.id,
       }
 
-      // For Instagram, we need to extract the recipient username from the chat ID
+      // For Instagram chats, use the new DM endpoint
       if (selectedChat.platform === "instagram") {
-        apiEndpoint = "/api/instagram/send-message"
-        // Extract username from chat ID format: instagram_${userId}_${recipientUsername}
-        const parts = selectedChat.id.split("_")
-        if (parts.length >= 3) {
-          const recipientUsername = parts.slice(2).join("_") // Handle usernames with underscores
-          requestBody = {
-            userId: user?.id,
-            recipientUsername: recipientUsername,
-            message: newMessage,
-            messageType: "text"
-          }
+        apiEndpoint = getInstagramApiUrl('SEND_DM')
+        
+        // Get the current session token
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+        
+        if (!accessToken) {
+          throw new Error("Authentication failed. Please log in again.")
         }
+
+        requestBody = {
+          chatId: selectedChat.id,
+          message: newMessage.trim(),
+          messageType: "text"
+        }
+
+        const response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`
+          },
+          body: JSON.stringify(requestBody),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to send Instagram message")
+        }
+
+        const result = await response.json()
+        
+        if (result.success) {
+          setNewMessage("")
+          // Refresh messages and chats
+          await fetchMessages(selectedChat.id)
+          await fetchChats()
+          
+          toast({
+            title: "Message Sent",
+            description: result.note || "Message sent successfully",
+          })
+        }
+        
+        return
       }
 
+      // Handle WhatsApp messages (existing logic)
       const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: {
@@ -379,13 +462,13 @@ export default function ChatsPage() {
       console.error("Error sending message:", error)
       toast({
         title: "Failed to send message",
-        description: "Please try again",
+        description: error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
       })
     } finally {
       setIsSending(false)
     }
-  }, [newMessage, selectedChat, isSending, user?.id, fetchMessages, fetchChats])
+  }, [newMessage, selectedChat, isSending, user?.id, fetchMessages, fetchChats, fetchInstagramDMs])
 
   // Memoized filtered chats
   const filteredChats = useMemo(() => 
@@ -532,6 +615,15 @@ export default function ChatsPage() {
           >
             <RefreshCw className={`mr-2 h-4 w-4 ${pageLoading ? 'animate-spin' : ''}`} />
             Refresh
+          </Button>
+          <Button 
+            variant="outline" 
+            className="font-medium bg-transparent text-sm sm:text-base"
+            onClick={fetchInstagramDMs}
+            disabled={pageLoading}
+          >
+            <Instagram className="mr-2 h-4 w-4" />
+            Fetch Instagram DMs
           </Button>
           <Button variant="outline" className="font-medium bg-transparent text-sm sm:text-base">
             <Filter className="mr-2 h-4 w-4" />
