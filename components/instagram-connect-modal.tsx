@@ -92,6 +92,8 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
 
       // Update user's Instagram connection
       if (user) {
+        console.log('Attempting to connect Instagram for user:', user.id)
+        
         let updateResponse
         try {
           updateResponse = await fetch(getInstagramApiUrl('CONNECT'), {
@@ -127,11 +129,37 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
 
         if (!updateResponse.ok) {
           const updateError = await updateResponse.json()
-          throw new Error(updateError.error || "Failed to update Instagram connection")
+          console.error('Instagram connection failed:', updateError)
+          
+          // Provide more detailed error information
+          let errorMessage = updateError.error || "Failed to update Instagram connection"
+          let errorDetails = ""
+          
+          if (updateError.details) {
+            if (typeof updateError.details === 'object') {
+              errorDetails = Object.entries(updateError.details)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(', ')
+            } else {
+              errorDetails = updateError.details
+            }
+          }
+          
+          if (updateError.suggestion) {
+            errorDetails += `\n\nSuggestion: ${updateError.suggestion}`
+          }
+          
+          if (updateError.debug) {
+            errorDetails += `\n\nDebug Info: ${JSON.stringify(updateError.debug, null, 2)}`
+          }
+          
+          throw new Error(`${errorMessage}\n\n${errorDetails}`)
         }
 
         const updateData = await updateResponse.json()
         console.log('Instagram connection updated successfully:', updateData)
+      } else {
+        throw new Error("User not authenticated. Please log in and try again.")
       }
 
       setIsConnected(true)
@@ -148,11 +176,54 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
           "Your Instagram account is now connected for basic authentication and account linking.",
       })
     } catch (error) {
+      console.error('Instagram connection error:', error)
+      
+      let errorMessage = "Failed to connect Instagram"
+      let errorDetails = ""
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === 'string') {
+        errorMessage = error
+      }
+      
+      // Show detailed error in toast
       toast({
         title: "Connection Failed",
-        description: error instanceof Error ? error.message : "Please check your Instagram API configuration",
+        description: errorMessage,
         variant: "destructive",
       })
+      
+      // Also show error in the UI
+      setStep(3) // Go back to connection test step
+      
+      // Add error display below the button
+      const errorElement = document.createElement('div')
+      errorElement.className = 'mt-4 p-3 bg-red-50 border border-red-200 rounded-lg'
+      errorElement.innerHTML = `
+        <div class="flex items-start gap-2">
+          <div class="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0">⚠️</div>
+          <div class="text-sm">
+            <p class="font-medium text-red-900">Connection Error:</p>
+            <p class="text-red-700 whitespace-pre-line">${errorMessage}</p>
+            <p class="text-red-600 mt-2">Please check your credentials and try again.</p>
+          </div>
+        </div>
+      `
+      
+      // Remove any existing error display
+      const existingError = document.querySelector('.instagram-error-display')
+      if (existingError) {
+        existingError.remove()
+      }
+      
+      errorElement.classList.add('instagram-error-display')
+      
+      // Find the button container and add error below it
+      const buttonContainer = document.querySelector('.instagram-connect-button-container')
+      if (buttonContainer) {
+        buttonContainer.parentNode?.insertBefore(errorElement, buttonContainer.nextSibling)
+      }
     } finally {
       setIsLoading(false)
     }
@@ -397,7 +468,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
                   <Button
                     onClick={handleConnectionTest}
                     disabled={isLoading}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 instagram-connect-button-container"
                   >
                     {isLoading ? (
                       <>
