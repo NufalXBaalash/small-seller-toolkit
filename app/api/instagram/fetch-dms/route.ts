@@ -57,13 +57,12 @@ export async function GET(request: NextRequest) {
 
     console.log('Authenticated user found:', { id: authUser.id, email: authUser.email })
 
-    // Get user's Instagram connection
+    // Get user's Instagram connection (any connection, not just connected ones)
     const { data: instagramConnection, error: connectionError } = await supabase
       .from('user_connections')
       .select('*')
       .eq('user_id', authUser.id)
       .eq('platform', 'instagram')
-      .eq('connected', true)
       .single()
 
     if (connectionError || !instagramConnection) {
@@ -76,6 +75,8 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    console.log('Instagram connection found:', instagramConnection)
 
     console.log('Instagram connection found:', instagramConnection.platform_username)
 

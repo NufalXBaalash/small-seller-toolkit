@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
     // Get the authorization header
     const authHeader = request.headers.get('authorization')
@@ -57,84 +57,54 @@ export async function POST(request: NextRequest) {
 
     console.log('Authenticated user found:', { id: authUser.id, email: authUser.email })
 
-    // First check if Instagram connection exists
-    const { data: existingConnection, error: checkError } = await supabase
+    // Check user_connections table
+    const { data: userConnections, error: connectionsError } = await supabase
       .from('user_connections')
       .select('*')
       .eq('user_id', authUser.id)
       .eq('platform', 'instagram')
+
+    // Check users table
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', authUser.id)
       .single()
 
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found"
-      console.log('Error checking Instagram connection:', checkError)
-      return NextResponse.json(
-        { 
-          error: "Failed to check Instagram connection",
-          details: checkError.message,
-          suggestion: "Please try again or contact support"
-        },
-        { status: 500 }
-      )
-    }
-
-    if (existingConnection) {
-      // Disconnect Instagram by updating user_connections table
-      const { error: disconnectError } = await supabase
-        .from('user_connections')
-        .update({
-          connected: false,
-          access_token: null,
-          refresh_token: null,
-          expires_at: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', authUser.id)
-        .eq('platform', 'instagram')
-
-      if (disconnectError) {
-        console.log('Error disconnecting Instagram:', disconnectError)
-        return NextResponse.json(
-          { 
-            error: "Failed to disconnect Instagram",
-            details: disconnectError.message,
-            suggestion: "Please try again or contact support"
-          },
-          { status: 500 }
-        )
-      }
-    } else {
-      console.log('No Instagram connection found to disconnect')
-    }
-
-    // Also clear Instagram-related fields from users table
-    const { error: userUpdateError } = await supabase
-      .from('users')
-      .update({
-        instagram_username: null,
-        instagram_connected: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', authUser.id)
-
-    if (userUpdateError) {
-      console.log('Error updating user table:', userUpdateError)
-      // Don't fail the request, just log the error
-    }
-
-    console.log('Instagram disconnected successfully for user:', authUser.id)
+    // Check existing chats
+    const { data: existingChats, error: chatsError } = await supabase
+      .from('chats')
+      .select('*')
+      .eq('user_id', authUser.id)
+      .eq('platform', 'instagram')
 
     return NextResponse.json({
       success: true,
-      message: "Instagram disconnected successfully",
+      message: "Debug information retrieved",
       data: {
         user_id: authUser.id,
-        platform: 'instagram',
-        connected: false
+        user_email: authUser.email,
+        user_connections: {
+          data: userConnections,
+          error: connectionsError?.message,
+          count: userConnections?.length || 0
+        },
+        user_table: {
+          data: userData,
+          error: userError?.message,
+          instagram_username: userData?.instagram_username,
+          instagram_connected: userData?.instagram_connected
+        },
+        existing_chats: {
+          data: existingChats,
+          error: chatsError?.message,
+          count: existingChats?.length || 0
+        }
       }
     })
 
   } catch (error) {
-    console.error("Disconnect Instagram error:", error)
+    console.error("Debug connection error:", error)
     return NextResponse.json(
       { 
         error: "Internal server error",

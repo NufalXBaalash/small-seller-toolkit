@@ -201,6 +201,54 @@ export default function SettingsPage() {
       setLoadingInstagram(false)
     }
   }
+
+  const handleDebugConnection = async () => {
+    if (!user?.id) return
+    
+    try {
+      setLoadingInstagram(true)
+      
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to debug connection",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch(getInstagramApiUrl('DEBUG_CONNECTION'), {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Debug connection data:', data)
+        toast({
+          title: "Debug Information",
+          description: `Found ${data.data?.user_connections?.count || 0} connections, ${data.data?.existing_chats?.count || 0} chats. Check console for details.`,
+        })
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to debug connection")
+      }
+    } catch (error) {
+      console.error("Error debugging connection:", error)
+      toast({
+        title: "Failed to debug connection",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingInstagram(false)
+    }
+  }
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-background">
       <div className="flex items-center justify-between space-y-2">
@@ -393,6 +441,16 @@ export default function SettingsPage() {
                     >
                       <MessageSquare className="h-3 w-3 mr-1" />
                       Fetch DMs
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleDebugConnection}
+                      disabled={loadingInstagram}
+                      className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-800 dark:hover:bg-orange-900/20"
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Debug
                     </Button>
                     <Button 
                       size="sm" 
