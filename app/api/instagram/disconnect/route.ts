@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (existingConnection) {
+      console.log('Found existing Instagram connection, disconnecting...')
       // Disconnect Instagram by updating user_connections table
       // Only update columns that exist in the table
       const { error: disconnectError } = await supabase
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         )
       }
+      console.log('Successfully updated user_connections table')
     } else {
       console.log('No Instagram connection found to disconnect')
     }

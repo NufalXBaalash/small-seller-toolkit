@@ -302,6 +302,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('Successfully processed Instagram conversations')
+    console.log('Final processed chats:', processedChats)
 
     return NextResponse.json({
       success: true,
