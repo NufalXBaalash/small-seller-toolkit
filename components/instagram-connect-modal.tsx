@@ -20,6 +20,7 @@ import {
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { getInstagramApiUrl } from "@/lib/api-config"
+import { supabase } from "@/lib/supabase"
 
 interface InstagramConnectModalProps {
   open: boolean
@@ -94,12 +95,21 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
       if (user) {
         console.log('Attempting to connect Instagram for user:', user.id)
         
+        // Get the current session token
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+        
+        if (!accessToken) {
+          throw new Error("No active session found. Please log in again.")
+        }
+        
         let updateResponse
         try {
           updateResponse = await fetch(getInstagramApiUrl('CONNECT'), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Authorization": `Bearer ${accessToken}`,
             },
             body: JSON.stringify({
               instagramUsername: instagramUsername,
@@ -115,6 +125,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "Authorization": `Bearer ${accessToken}`,
             },
             body: JSON.stringify({
               instagramUsername: instagramUsername,

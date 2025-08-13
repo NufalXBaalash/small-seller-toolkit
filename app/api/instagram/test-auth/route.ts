@@ -5,11 +5,24 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Testing Instagram authentication...')
     
-    // Create Supabase client with cookies from the request
-    const cookieHeader = request.headers.get('cookie') || ''
-    console.log('Cookie header present:', !!cookieHeader)
+    // Get the authorization header
+    const authHeader = request.headers.get('authorization')
+    console.log('Authorization header present:', !!authHeader)
     
-    // Create a Supabase client that can read cookies
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('Missing or invalid authorization header')
+      return NextResponse.json({
+        success: false,
+        error: 'Authentication required',
+        suggestion: 'Please ensure you are logged in and try again'
+      }, { status: 401 })
+    }
+
+    // Extract the token
+    const token = authHeader.replace('Bearer ', '')
+    console.log('Token extracted from header')
+    
+    // Create a Supabase client with the user's token
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     
@@ -20,12 +33,12 @@ export async function GET(request: NextRequest) {
       },
       global: {
         headers: {
-          Cookie: cookieHeader
+          Authorization: `Bearer ${token}`
         }
       }
     })
     
-    console.log('Supabase client created with cookies')
+    console.log('Supabase client created with token')
     
     // Try to get user info from Supabase auth
     const { data: { user }, error: authError } = await supabase.auth.getUser()
