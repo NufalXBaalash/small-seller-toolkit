@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerClient()
+    // Create Supabase client with cookies from the request
+    const cookieHeader = request.headers.get('cookie') || ''
+    console.log('Auth header:', cookieHeader)
     
-    // Get the current user from the request headers
-    const authHeader = request.headers.get('authorization')
-    console.log('Auth header:', authHeader)
+    // Create a Supabase client that can read cookies
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      },
+      global: {
+        headers: {
+          Cookie: cookieHeader
+        }
+      }
+    })
     
     // Try to get user info from Supabase auth
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -30,14 +44,14 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
     
-    console.log('Authenticated user:', user)
+    console.log('Authenticated user found:', user)
     
     // Check if user exists in the users table
     const { data: dbUser, error: dbError } = await supabase
       .from('users')
       .select('*')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
     
     if (dbError) {
       console.log('Database user lookup error:', dbError)

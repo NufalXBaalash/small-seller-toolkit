@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
 
 // Explicitly export both GET and POST methods
 export async function GET(request: NextRequest) {
@@ -42,10 +42,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const supabase = createServerClient()
-    console.log('Supabase client created')
+    // Create Supabase client with cookies from the request
+    const cookieHeader = request.headers.get('cookie') || ''
+    console.log('Cookie header present:', !!cookieHeader)
+    
+    // Create a Supabase client that can read cookies
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      },
+      global: {
+        headers: {
+          Cookie: cookieHeader
+        }
+      }
+    })
+    
+    console.log('Supabase client created with cookies')
 
-    // Get the authenticated user from Supabase auth instead of relying on passed userId
+    // Try to get user info from Supabase auth
     console.log('Getting authenticated user from Supabase auth...')
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
     
@@ -249,7 +268,7 @@ export async function POST(request: NextRequest) {
       
       // Provide detailed error information
       const errorDetails = {
-        user_connections_error: connectionError?.message || 'Table not available or update failed',
+        user_connections_error: connectionError && typeof connectionError === 'object' && 'message' in connectionError ? connectionError.message : 'Table not available or update failed',
         user_profiles_error: 'Table not available or update failed',
         users_table_error: 'Update failed'
       }

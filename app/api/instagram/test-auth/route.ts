@@ -1,11 +1,31 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase"
+import { createClient } from "@supabase/supabase-js"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerClient()
-    
     console.log('Testing Instagram authentication...')
+    
+    // Create Supabase client with cookies from the request
+    const cookieHeader = request.headers.get('cookie') || ''
+    console.log('Cookie header present:', !!cookieHeader)
+    
+    // Create a Supabase client that can read cookies
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      },
+      global: {
+        headers: {
+          Cookie: cookieHeader
+        }
+      }
+    })
+    
+    console.log('Supabase client created with cookies')
     
     // Try to get user info from Supabase auth
     const { data: { user }, error: authError } = await supabase.auth.getUser()
