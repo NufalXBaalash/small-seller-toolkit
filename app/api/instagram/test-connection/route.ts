@@ -47,39 +47,54 @@ export async function POST(request: NextRequest) {
       console.log('user_connections table test: Exception - Missing')
     }
 
-    // Test if chats table exists
-    let chatsTableExists = false
+    // Test if users table exists and has Instagram fields
+    let usersTableExists = false
+    let instagramFieldsExist = false
     try {
-      const { data: chats, error: chatsError } = await supabase
-        .from('chats')
-        .select('*')
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, instagram_username, instagram_connected')
         .limit(1)
       
-      chatsTableExists = !chatsError
-      console.log('chats table test:', chatsTableExists ? 'OK' : 'Missing')
+      usersTableExists = !usersError
+      if (usersTableExists) {
+        // Check if Instagram fields exist by trying to access them
+        instagramFieldsExist = true
+      }
+      console.log('users table test:', usersTableExists ? 'OK' : 'Missing')
+      console.log('Instagram fields test:', instagramFieldsExist ? 'OK' : 'Missing')
     } catch (e) {
-      chatsTableExists = false
-      console.log('chats table test: Exception - Missing')
+      usersTableExists = false
+      instagramFieldsExist = false
+      console.log('users table test: Exception - Missing')
     }
 
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // For now, we'll simulate a successful connection
+    // For Test Mode, we'll simulate a successful connection
     // In production, you would validate the token with Instagram's API
     console.log('Instagram connection test successful for:', username)
 
     return NextResponse.json({
       success: true,
-      message: "Instagram connection test successful",
+      message: "Instagram connection test successful for Test Mode",
       data: {
         username,
         isValid: true,
+        testMode: true,
         timestamp: new Date().toISOString(),
         database: {
           user_connections: connectionsTableExists ? 'OK' : 'Missing',
-          chats: chatsTableExists ? 'OK' : 'Missing'
-        }
+          users_table: usersTableExists ? 'OK' : 'Missing',
+          instagram_fields: instagramFieldsExist ? 'OK' : 'Missing'
+        },
+        limitations: [
+          "Test Mode: Limited to test users only",
+          "Basic authentication only",
+          "No access to real user data",
+          "No business features or DMs"
+        ]
       }
     })
 

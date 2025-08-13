@@ -6,23 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Instagram,
   CheckCircle,
   AlertCircle,
-  Copy,
   User,
-  QrCode,
-  Smartphone,
-  ArrowRight,
-  Loader2,
-  Search,
-  Clock,
-  Settings,
-  Globe,
-  Camera,
   Shield,
+  Loader2,
+  ArrowRight,
+  ExternalLink,
+  Info,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
@@ -38,14 +31,10 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
   const [step, setStep] = useState(1)
   const [instagramUsername, setInstagramUsername] = useState("")
   const [accessToken, setAccessToken] = useState("")
-  const [businessName, setBusinessName] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
-  const [connectionMethod, setConnectionMethod] = useState<"username" | "business">("username")
 
   const { user, userProfile } = useAuth()
-
-
 
   const handleUsernameSubmit = async () => {
     if (!instagramUsername || instagramUsername.trim().length < 3) {
@@ -79,16 +68,6 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
     setIsLoading(false)
   }
 
-  const handleBusinessSetup = async () => {
-    const businessNameToUse = businessName.trim() || userProfile?.business_name || "My Business"
-
-    setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setBusinessName(businessNameToUse)
-    setIsLoading(false)
-    setStep(4)
-  }
-
   const handleConnectionTest = async () => {
     setIsLoading(true)
 
@@ -111,9 +90,8 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
         throw new Error(data.error || "Failed to test Instagram connection")
       }
 
-      // Update user's business with Instagram connection
+      // Update user's Instagram connection
       if (user) {
-        // Try the main endpoint first, then fallback to alternatives
         let updateResponse
         try {
           updateResponse = await fetch(getInstagramApiUrl('CONNECT'), {
@@ -125,7 +103,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
               userId: user.id,
               instagramUsername: instagramUsername,
               accessToken: accessToken,
-              businessName: businessName,
+              businessName: userProfile?.business_name || "My Business",
               connected: true,
             }),
           })
@@ -141,7 +119,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
               userId: user.id,
               instagramUsername: instagramUsername,
               accessToken: accessToken,
-              businessName: businessName,
+              businessName: userProfile?.business_name || "My Business",
               connected: true,
             }),
           })
@@ -157,7 +135,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
       }
 
       setIsConnected(true)
-      setStep(5)
+      setStep(4)
 
       // Call the success callback to refresh the parent component
       if (onSuccess) {
@@ -167,7 +145,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
       toast({
         title: "Instagram Connected Successfully! 🎉",
         description:
-          "Your Instagram account is now connected and ready to use. You can now receive and send DMs!",
+          "Your Instagram account is now connected for basic authentication and account linking.",
       })
     } catch (error) {
       toast({
@@ -184,10 +162,8 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
     setStep(1)
     setInstagramUsername("")
     setAccessToken("")
-    setBusinessName("")
     setIsConnected(false)
     setIsLoading(false)
-    setConnectionMethod("username")
   }
 
   const handleClose = () => {
@@ -205,17 +181,17 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
             <div className="h-8 w-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
               <Instagram className="h-5 w-5 text-white" />
             </div>
-            Connect Instagram
+            Connect Instagram (Test Mode)
           </DialogTitle>
           <DialogDescription>
-            Follow these steps to connect your Instagram account and start managing your DMs and messages.
+            Connect your Instagram account for basic authentication and account linking. This is for testing purposes only.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Progress Indicator */}
           <div className="flex items-center justify-between">
-            {[1, 2, 3, 4, 5].map((stepNumber) => (
+            {[1, 2, 3, 4].map((stepNumber) => (
               <div key={stepNumber} className="flex items-center">
                 <div
                   className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -228,7 +204,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
                 >
                   {stepNumber < step ? <CheckCircle className="h-4 w-4" /> : stepNumber}
                 </div>
-                {stepNumber < 5 && (
+                {stepNumber < 4 && (
                   <div className={`h-1 w-8 sm:w-12 mx-2 ${stepNumber < step ? "bg-gradient-to-r from-purple-500 to-pink-500" : "bg-gray-200"}`} />
                 )}
               </div>
@@ -263,13 +239,13 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
                   </p>
                 </div>
 
-                <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="bg-blue-50 p-4 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-purple-900">Important:</p>
-                      <p className="text-purple-700">
-                        Make sure this is the Instagram account you want to connect. You'll need to provide an access token in the next step.
+                      <p className="font-medium text-blue-900">Test Mode Setup:</p>
+                      <p className="text-blue-700">
+                        Since you're in Test Mode, you only need basic authentication. No special permissions or business features are required.
                       </p>
                     </div>
                   </div>
@@ -324,14 +300,28 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
                   <div className="flex items-start gap-3">
                     <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-blue-900">How to get your access token:</p>
+                      <p className="font-medium text-blue-900">How to get your access token for Test Mode:</p>
                       <ol className="text-blue-700 list-decimal list-inside space-y-1 mt-2">
-                        <li>Go to <a href="https://developers.facebook.com/" target="_blank" rel="noopener noreferrer" className="underline">Facebook Developers</a></li>
+                        <li>Go to <a href="https://developers.facebook.com/" target="_blank" rel="noopener noreferrer" className="underline flex items-center gap-1">Facebook Developers <ExternalLink className="h-3 w-3" /></a></li>
                         <li>Create a new app or select an existing one</li>
-                        <li>Add Instagram Basic Display or Instagram Graph API</li>
-                        <li>Generate an access token with the required permissions</li>
+                        <li>Add <strong>Instagram Basic Display</strong> (not Graph API)</li>
+                        <li>Set app to <strong>Development Mode</strong></li>
+                        <li>Add yourself as a test user</li>
+                        <li>Generate a <strong>User Token</strong> with basic permissions</li>
                         <li>Copy the token and paste it above</li>
                       </ol>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-yellow-900">Test Mode Limitations:</p>
+                      <p className="text-yellow-700">
+                        In Test Mode, you can only connect with test users. The token will have limited permissions and won't access real user data.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -359,69 +349,13 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
             </Card>
           )}
 
-          {/* Step 3: Business Setup */}
+          {/* Step 3: Connection Test */}
           {step === 3 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Smartphone className="h-5 w-5 text-purple-600" />
-                  Step 3: Business Information
-                </CardTitle>
-                <CardDescription>Set up your business profile for Instagram integration</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="business">Business Name</Label>
-                  <Input
-                    id="business"
-                    type="text"
-                    placeholder={userProfile?.business_name || "Your Business Name"}
-                    value={businessName}
-                    onChange={(e) => setBusinessName(e.target.value)}
-                    className="text-base"
-                  />
-                </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-purple-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-medium text-purple-900">Important:</p>
-                      <p className="text-purple-700">
-                        This business name will be used for your Instagram integration and customer communications.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleBusinessSetup}
-                    disabled={isLoading}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Setting up...
-                      </>
-                    ) : (
-                      "Continue"
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Step 4: Connection Test */}
-          {step === 4 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-purple-600" />
-                  Step 4: Test Connection
+                  <Shield className="h-5 w-5 text-purple-600" />
+                  Step 3: Test Connection
                 </CardTitle>
                 <CardDescription>Test your Instagram connection to ensure everything is working properly</CardDescription>
               </CardHeader>
@@ -438,8 +372,8 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
                   <div className="space-y-2">
                     <Label>Business Name</Label>
                     <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                      <Camera className="h-5 w-5 text-purple-600" />
-                      <span className="font-medium">{businessName}</span>
+                      <User className="h-5 w-5 text-purple-600" />
+                      <span className="font-medium">{userProfile?.business_name || "My Business"}</span>
                     </div>
                   </div>
                 </div>
@@ -457,7 +391,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                     Back
                   </Button>
                   <Button
@@ -479,8 +413,8 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
             </Card>
           )}
 
-          {/* Step 5: Success */}
-          {step === 5 && (
+          {/* Step 4: Success */}
+          {step === 4 && (
             <Card className="border-purple-200 bg-purple-50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-purple-800">
@@ -488,7 +422,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
                   Instagram Connected Successfully!
                 </CardTitle>
                 <CardDescription className="text-purple-700">
-                  Your Instagram account is now connected and ready to use
+                  Your Instagram account is now connected for basic authentication and account linking
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -499,18 +433,30 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
                   </div>
                   <div className="bg-white p-4 rounded-lg border border-purple-200">
                     <h4 className="font-medium text-purple-800 mb-2">Business Name</h4>
-                    <p className="text-sm text-purple-700">{businessName}</p>
+                    <p className="text-sm text-purple-700">{userProfile?.business_name || "My Business"}</p>
                   </div>
                 </div>
 
                 <div className="bg-white p-4 rounded-lg border border-purple-200">
-                  <h4 className="font-medium text-purple-800 mb-2">What's Next?</h4>
+                  <h4 className="font-medium text-purple-800 mb-2">What's Available in Test Mode:</h4>
                   <ul className="text-sm text-purple-700 space-y-1">
-                    <li>• Start receiving Instagram DMs in your chat dashboard</li>
-                    <li>• Reply to customers directly from the platform</li>
-                    <li>• Set up auto-reply messages for Instagram</li>
-                    <li>• Manage all your social media conversations in one place</li>
+                    <li>• Basic Instagram account authentication</li>
+                    <li>• Account linking and verification</li>
+                    <li>• Test user connection (limited to test users)</li>
+                    <li>• Basic profile information access</li>
                   </ul>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <div className="flex items-start gap-3">
+                    <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-sm">
+                      <p className="font-medium text-blue-900">Next Steps for Production:</p>
+                      <p className="text-blue-700">
+                        When you're ready to go live, you'll need to submit your app for review to access real user data and additional features.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <Button onClick={handleClose} className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">

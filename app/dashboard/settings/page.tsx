@@ -263,6 +263,12 @@ export default function SettingsPage() {
               <span>Platform Integrations</span>
             </CardTitle>
             <CardDescription>Connect your social media platforms to start automating</CardDescription>
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mt-2">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                <strong>Note:</strong> Instagram integration is currently in Test Mode. This means you can only connect with test users and have limited functionality. 
+                See <a href="/setup-instagram" className="underline">setup guide</a> for more details.
+              </p>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -303,11 +309,11 @@ export default function SettingsPage() {
                   <Instagram className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div>
-                  <p className="font-medium">Instagram</p>
+                  <p className="font-medium">Instagram (Test Mode)</p>
                   <p className="text-sm text-muted-foreground">
                     {instagramStatus?.connected 
                       ? `Connected as @${instagramStatus.username}`
-                      : "Connect your Instagram account to manage DMs"
+                      : "Connect your Instagram account for basic authentication"
                     }
                   </p>
                   {instagramStatus?.connected && (
@@ -315,6 +321,9 @@ export default function SettingsPage() {
                       Last connected: {new Date(instagramStatus.last_connected).toLocaleDateString()}
                     </p>
                   )}
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    Test Mode: Basic authentication only
+                  </p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
