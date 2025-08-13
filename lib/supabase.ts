@@ -573,12 +573,14 @@ export const fetchUserChats = async (userId: string): Promise<any[]> => {
       .from("chats")
       .select(`
         id,
+        user_id,
         platform,
         last_message,
         unread_count,
         status,
         created_at,
         updated_at,
+        customer_username,
         customers (
           id,
           name,

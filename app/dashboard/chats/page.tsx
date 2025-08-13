@@ -24,12 +24,12 @@ interface Chat {
   status: string
   created_at: string
   updated_at: string
-  customers: {
+  customers?: {
     id: string
     name: string
     email: string | null
     phone_number: string | null
-  }
+  } | null
   customer_username?: string // For Instagram chats
 }
 
@@ -138,10 +138,10 @@ const ChatItem = React.memo(({
         <AvatarImage
           src={`/placeholder.svg?height=48&width=48&text=${chat.platform === "instagram" && chat.customer_username
             ? chat.customer_username.charAt(0).toUpperCase()
-            : chat.customers.name
-              .split(" ")
+            : chat.customers?.name
+              ?.split(" ")
               .map((n) => n[0])
-              .join("")}`}
+              .join("") || "U"}`}
         />
         <AvatarFallback className={`font-semibold text-xs sm:text-sm ${
           chat.platform === "instagram" 
@@ -150,10 +150,10 @@ const ChatItem = React.memo(({
         }`}>
           {chat.platform === "instagram" && chat.customer_username
             ? chat.customer_username.charAt(0).toUpperCase()
-            : chat.customers.name
-              .split(" ")
+            : chat.customers?.name
+              ?.split(" ")
               .map((n) => n[0])
-              .join("")}
+              .join("") || "U"}
         </AvatarFallback>
       </Avatar>
       {chat.status === "active" && (
@@ -168,7 +168,7 @@ const ChatItem = React.memo(({
           <p className="font-semibold text-gray-900 truncate text-sm sm:text-base">
             {chat.platform === "instagram" && chat.customer_username 
               ? `@${chat.customer_username}` 
-              : chat.customers.name
+              : chat.customers?.name || "Unknown Customer"
             }
           </p>
           {chat.platform === "instagram" && (
@@ -279,7 +279,9 @@ export default function ChatsPage() {
 
     try {
       setPageLoading(true)
+      console.log('[fetchChats] Fetching chats for user:', user.id)
       const data = await fetchUserChats(user.id)
+      console.log('[fetchChats] Received data:', data)
       setChats(data)
       if (data.length > 0) {
         setSelectedChat(data[0])
@@ -362,6 +364,7 @@ export default function ChatsPage() {
       const data = await response.json()
       
       if (data.success) {
+        console.log('[fetchInstagramDMs] Success! Data:', data)
         // Refresh chats to include the new Instagram conversations
         await fetchChats()
         toast({
@@ -473,7 +476,8 @@ export default function ChatsPage() {
   // Memoized filtered chats
   const filteredChats = useMemo(() => 
     chats.filter(chat =>
-      chat.customers.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+      (chat.customers?.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || false) ||
+      (chat.customer_username?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || false) ||
       chat.platform.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
       chat.last_message?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
     ), [chats, debouncedSearchTerm]
@@ -708,7 +712,7 @@ export default function ChatsPage() {
                       }`}>
                         {selectedChat.platform === "instagram" && selectedChat?.customer_username
                           ? selectedChat.customer_username.charAt(0).toUpperCase()
-                          : selectedChat?.customers.name.split(" ").map(n => n[0]).join("") || "MS"
+                          : selectedChat?.customers?.name?.split(" ").map(n => n[0]).join("") || "MS"
                         }
                       </AvatarFallback>
                     </Avatar>
@@ -720,7 +724,7 @@ export default function ChatsPage() {
                     <CardTitle className="text-base sm:text-lg font-bold">
                       {selectedChat.platform === "instagram" && selectedChat?.customer_username
                         ? `@${selectedChat.customer_username}`
-                        : selectedChat?.customers.name || "Select a chat"
+                        : selectedChat?.customers?.name || "Select a chat"
                       }
                     </CardTitle>
                     <CardDescription className="flex items-center gap-2 text-xs sm:text-sm">
@@ -818,7 +822,7 @@ export default function ChatsPage() {
                     </Button>
                     <div className="flex-1 relative">
                       <Input
-                        placeholder={`Type your message to ${selectedChat.platform === 'instagram' ? '@' + selectedChat.customer_username : selectedChat.customers.name}...`}
+                        placeholder={`Type your message to ${selectedChat.platform === 'instagram' ? '@' + selectedChat.customer_username : selectedChat.customers?.name || 'customer'}...`}
                         className="pr-10 sm:pr-12 border-gray-200 text-sm sm:text-base"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}

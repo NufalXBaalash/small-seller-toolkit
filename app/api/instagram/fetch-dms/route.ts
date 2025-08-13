@@ -175,12 +175,38 @@ export async function GET(request: NextRequest) {
         let chatId: string
 
         if (chatError || !existingChat) {
+          // First, create a customer record for Instagram user
+          let customerId: string | null = null
+          try {
+            const { data: customer, error: customerError } = await supabase
+              .from('customers')
+              .insert({
+                user_id: authUser.id,
+                name: `@${conversation.customer_username}`,
+                email: null,
+                phone_number: null,
+                platform: 'instagram',
+                platform_username: conversation.customer_username,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select('id')
+              .single()
+
+            if (!customerError && customer) {
+              customerId = customer.id
+              console.log('Created customer record for Instagram user:', customerId)
+            }
+          } catch (customerError) {
+            console.log('Failed to create customer record, continuing with null customer_id:', customerError)
+          }
+
           // Create new chat
           const { data: newChat, error: createChatError } = await supabase
             .from('chats')
             .insert({
               user_id: authUser.id,
-              customer_id: null, // We'll create a customer record
+              customer_id: customerId,
               platform: 'instagram',
               customer_username: conversation.customer_username,
               last_message: conversation.last_message,
