@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@/lib/supabase"
 
-export async function GET() {
+// Explicitly export both GET and POST methods
+export async function GET(request: NextRequest) {
+  console.log('Instagram connect GET method called')
+  
   return NextResponse.json({
     success: true,
     message: "Instagram connect endpoint is accessible",
     timestamp: new Date().toISOString(),
-    endpoint: "/api/instagram/connect"
+    endpoint: "/api/instagram/connect",
+    method: "GET"
   })
 }
 
 export async function POST(request: NextRequest) {
+  console.log('Instagram connect POST method called')
+  
   try {
-    console.log('Instagram connect API called')
     const { userId, instagramUsername, accessToken, businessName, connected } = await request.json()
 
     console.log('Request data:', { userId, instagramUsername, businessName, connected })
