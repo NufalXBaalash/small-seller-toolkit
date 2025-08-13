@@ -76,8 +76,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    console.log('Instagram connection found:', instagramConnection)
+    console.log('Instagram connection found:', JSON.stringify(instagramConnection, null, 2))
     console.log('Instagram connection platform_username:', instagramConnection.platform_username)
+    console.log('Instagram connection connected status:', instagramConnection.connected)
 
     // In Test Mode, we'll create mock conversations since we can't access real DMs
     // In production, you would use the Instagram Graph API to fetch real conversations

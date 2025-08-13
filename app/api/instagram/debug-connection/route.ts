@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     
     // Log the first connection details if it exists
     if (userConnections && userConnections.length > 0) {
-      console.log('First Instagram connection details:', userConnections[0])
+      console.log('First Instagram connection details:', JSON.stringify(userConnections[0], null, 2))
     }
 
     // Check users table

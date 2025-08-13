@@ -1082,7 +1082,7 @@ export const getInstagramConnectionStatus = async (userId: string) => {
           .select('connected, platform_username, business_name, updated_at')
           .eq('user_id', userId)
           .eq('platform', 'instagram')
-          .eq('connected', true)
+          // Remove the .eq('connected', true) filter to show actual connection state
           .single()
         
         if (fallbackError) {
