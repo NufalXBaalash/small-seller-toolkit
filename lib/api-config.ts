@@ -29,6 +29,7 @@ export const INSTAGRAM_ENDPOINTS = {
   SEND_MESSAGE: '/api/instagram/send-message',
   SEND_DM: '/api/instagram/send-dm',
   FETCH_DMS: '/api/instagram/fetch-dms',
+  DISCONNECT: '/api/instagram/disconnect',
   WEBHOOK: '/api/instagram/webhook',
 } as const
 

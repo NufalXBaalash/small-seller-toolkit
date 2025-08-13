@@ -14,7 +14,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/hooks/use-toast"
 import { InstagramConnectModal } from "@/components/instagram-connect-modal"
-import { getInstagramConnectionStatus } from "@/lib/supabase"
+import { getInstagramConnectionStatus, supabase } from "@/lib/supabase"
 import { getInstagramApiUrl } from "@/lib/api-config"
 
 export default function SettingsPage() {
@@ -96,39 +96,27 @@ export default function SettingsPage() {
     
     try {
       console.log('Disconnecting Instagram for user:', user.id)
-      // Call API to disconnect Instagram - try main endpoint first, then fallback
-      let response
-      try {
-        response = await fetch(getInstagramApiUrl('CONNECT'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            instagramUsername: instagramStatus?.username || '',
-            accessToken: '',
-            businessName: instagramStatus?.business_name || '',
-            connected: false
-          }),
+      
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to disconnect Instagram",
+          variant: "destructive",
         })
-      } catch (error) {
-        console.log('Main endpoint failed, trying alternative:', error)
-        // Fallback to alternative endpoint
-        response = await fetch(getInstagramApiUrl('CONNECT_V2'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            instagramUsername: instagramStatus?.username || '',
-            accessToken: '',
-            businessName: instagramStatus?.business_name || '',
-            connected: false
-          }),
-        })
+        return
       }
+
+      const response = await fetch(getInstagramApiUrl('DISCONNECT'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
 
       if (response.ok) {
         const result = await response.json()
@@ -162,6 +150,53 @@ export default function SettingsPage() {
       setInstagramStatus(status)
     } catch (error) {
       console.error('Error refreshing Instagram status:', error)
+    } finally {
+      setLoadingInstagram(false)
+    }
+  }
+
+  const handleFetchInstagramDMs = async () => {
+    if (!user?.id) return
+    
+    try {
+      setLoadingInstagram(true)
+      
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to fetch Instagram DMs",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch('/api/instagram/fetch-dms', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast({
+          title: "Instagram DMs Fetched",
+          description: `Successfully loaded ${data.data?.total_conversations || 0} conversations. You can now view them in the Chats page.`,
+        })
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to fetch Instagram DMs")
+      }
+    } catch (error) {
+      console.error("Error fetching Instagram DMs:", error)
+      toast({
+        title: "Failed to fetch Instagram DMs",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
     } finally {
       setLoadingInstagram(false)
     }
@@ -348,6 +383,16 @@ export default function SettingsPage() {
                     >
                       <RefreshCw className={`h-3 w-3 mr-1 ${loadingInstagram ? 'animate-spin' : ''}`} />
                       Refresh
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleFetchInstagramDMs}
+                      disabled={loadingInstagram}
+                      className="text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-900/20"
+                    >
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      Fetch DMs
                     </Button>
                     <Button 
                       size="sm" 

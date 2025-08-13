@@ -184,6 +184,30 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
         description:
           "Your Instagram account is now connected for basic authentication and account linking.",
       })
+
+      // Automatically fetch Instagram DMs after successful connection
+      try {
+        console.log('Automatically fetching Instagram DMs after connection...')
+        const dmResponse = await fetch('/api/instagram/fetch-dms', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`
+          }
+        })
+
+        if (dmResponse.ok) {
+          const dmData = await dmResponse.json()
+          console.log('Auto-fetched Instagram DMs:', dmData)
+          toast({
+            title: "Instagram DMs Loaded",
+            description: `Successfully loaded ${dmData.data?.total_conversations || 0} conversations. You can now view them in the Chats page.`,
+          })
+        } else {
+          console.log('Auto-fetch DMs failed, but connection was successful')
+        }
+      } catch (dmError) {
+        console.log('Auto-fetch DMs error (non-critical):', dmError)
+        // Don't show error to user since connection was successful
+      }
     } catch (error) {
       console.error('Instagram connection error:', error)
       
