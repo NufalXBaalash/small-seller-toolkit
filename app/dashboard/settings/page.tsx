@@ -14,6 +14,8 @@ import { ThemeToggle } from "@/components/theme-toggle"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/hooks/use-toast"
 import { InstagramConnectModal } from "@/components/instagram-connect-modal"
+import { FacebookConnectModal } from "@/components/facebook-connect-modal"
+import { WhatsAppConnectModal } from "@/components/whatsapp-connect-modal"
 import { getInstagramConnectionStatus, supabase } from "@/lib/supabase"
 import { getInstagramApiUrl } from "@/lib/api-config"
 
@@ -26,7 +28,21 @@ export default function SettingsPage() {
     business_name: string
     last_connected: string
   } | null>(null)
+  const [facebookStatus, setFacebookStatus] = useState<{
+    connected: boolean
+    pageId: string
+    business_name: string
+    last_connected: string
+  } | null>(null)
+  const [whatsappStatus, setWhatsappStatus] = useState<{
+    connected: boolean
+    phoneNumberId: string
+    business_name: string
+    last_connected: string
+  } | null>(null)
   const [loadingInstagram, setLoadingInstagram] = useState(false) // Start with false for better UX
+  const [loadingFacebook, setLoadingFacebook] = useState(false)
+  const [loadingWhatsApp, setLoadingWhatsApp] = useState(false)
   const [profileData, setProfileData] = useState({
     first_name: userProfile?.first_name || "",
     last_name: userProfile?.last_name || "",
@@ -34,6 +50,8 @@ export default function SettingsPage() {
     phone_number: userProfile?.phone_number || "",
   })
   const [instagramModalOpen, setInstagramModalOpen] = useState(false)
+  const [facebookModalOpen, setFacebookModalOpen] = useState(false)
+  const [whatsappModalOpen, setWhatsappModalOpen] = useState(false)
 
 
 
@@ -70,6 +88,80 @@ export default function SettingsPage() {
     }
 
     fetchInstagramStatus()
+  }, [user?.id])
+
+  // Fetch Facebook connection status
+  useEffect(() => {
+    const fetchFacebookStatus = async () => {
+      if (!user?.id) return
+      
+      try {
+        setLoadingFacebook(true)
+        // Try to get Facebook status from user_connections table
+        const { data: connections, error } = await supabase
+          .from("user_connections")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("platform", "facebook")
+          .eq("connected", true)
+          .single()
+
+        if (!error && connections) {
+          setFacebookStatus({
+            connected: true,
+            pageId: connections.platform_username,
+            business_name: connections.business_name || "My Business",
+            last_connected: connections.updated_at
+          })
+        } else {
+          setFacebookStatus(null)
+        }
+      } catch (error) {
+        console.error('Error fetching Facebook status:', error)
+        setFacebookStatus(null)
+      } finally {
+        setLoadingFacebook(false)
+      }
+    }
+
+    fetchFacebookStatus()
+  }, [user?.id])
+
+  // Fetch WhatsApp connection status
+  useEffect(() => {
+    const fetchWhatsAppStatus = async () => {
+      if (!user?.id) return
+      
+      try {
+        setLoadingWhatsApp(true)
+        // Try to get WhatsApp status from user_connections table
+        const { data: connections, error } = await supabase
+          .from("user_connections")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("platform", "whatsapp")
+          .eq("connected", true)
+          .single()
+
+        if (!error && connections) {
+          setWhatsappStatus({
+            connected: true,
+            phoneNumberId: connections.platform_username,
+            business_name: connections.business_name || "My Business",
+            last_connected: connections.updated_at
+          })
+        } else {
+          setWhatsappStatus(null)
+        }
+      } catch (error) {
+        console.error('Error fetching WhatsApp status:', error)
+        setWhatsappStatus(null)
+      } finally {
+        setLoadingWhatsApp(false)
+      }
+    }
+
+    fetchWhatsAppStatus()
   }, [user?.id])
 
   const handleProfileUpdate = async () => {
@@ -155,6 +247,68 @@ export default function SettingsPage() {
     }
   }
 
+  const refreshFacebookStatus = async () => {
+    if (!user?.id) return
+    
+    try {
+      setLoadingFacebook(true)
+      const { data: connections, error } = await supabase
+        .from("user_connections")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("platform", "facebook")
+        .eq("connected", true)
+        .single()
+
+      if (!error && connections) {
+        setFacebookStatus({
+          connected: true,
+          pageId: connections.platform_username,
+          business_name: connections.business_name || "My Business",
+          last_connected: connections.updated_at
+        })
+      } else {
+        setFacebookStatus(null)
+      }
+    } catch (error) {
+      console.error('Error refreshing Facebook status:', error)
+      setFacebookStatus(null)
+    } finally {
+      setLoadingFacebook(false)
+    }
+  }
+
+  const refreshWhatsAppStatus = async () => {
+    if (!user?.id) return
+    
+    try {
+      setLoadingWhatsApp(true)
+      const { data: connections, error } = await supabase
+        .from("user_connections")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("platform", "whatsapp")
+        .eq("connected", true)
+        .single()
+
+      if (!error && connections) {
+        setWhatsappStatus({
+          connected: true,
+          phoneNumberId: connections.platform_username,
+          business_name: connections.business_name || "My Business",
+          last_connected: connections.updated_at
+        })
+      } else {
+        setWhatsappStatus(null)
+      }
+    } catch (error) {
+      console.error('Error refreshing WhatsApp status:', error)
+      setWhatsappStatus(null)
+    } finally {
+      setLoadingWhatsApp(false)
+    }
+  }
+
   const handleFetchInstagramDMs = async () => {
     if (!user?.id) return
     
@@ -199,6 +353,100 @@ export default function SettingsPage() {
       })
     } finally {
       setLoadingInstagram(false)
+    }
+  }
+
+  const handleFetchFacebookDMs = async () => {
+    if (!user?.id) return
+    
+    try {
+      setLoadingFacebook(true)
+      
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to fetch Facebook DMs",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch('/api/facebook/fetch-dms', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast({
+          title: "Facebook DMs Fetched",
+          description: `Successfully loaded ${data.data?.total_conversations || 0} conversations. You can now view them in the Chats page.`,
+        })
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to fetch Facebook DMs")
+      }
+    } catch (error) {
+      console.error("Error fetching Facebook DMs:", error)
+      toast({
+        title: "Failed to fetch Facebook DMs",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingFacebook(false)
+    }
+  }
+
+  const handleFetchWhatsAppDMs = async () => {
+    if (!user?.id) return
+    
+    try {
+      setLoadingWhatsApp(true)
+      
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to fetch WhatsApp DMs",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch('/api/whatsapp/fetch-dms', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        toast({
+          title: "WhatsApp DMs Fetched",
+          description: `Successfully loaded ${data.data?.total_conversations || 0} conversations. You can now view them in the Chats page.`,
+        })
+      } else {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to fetch WhatsApp DMs")
+      }
+    } catch (error) {
+      console.error("Error fetching WhatsApp DMs:", error)
+      toast({
+        title: "Failed to fetch WhatsApp DMs",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
+    } finally {
+      setLoadingWhatsApp(false)
     }
   }
 
@@ -401,12 +649,83 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="font-medium">WhatsApp Business API</p>
-                  <p className="text-sm text-muted-foreground">Connect your WhatsApp Business account</p>
+                  <p className="text-sm text-muted-foreground">
+                    {whatsappStatus?.connected 
+                      ? `Connected with Phone Number ID: ${whatsappStatus.phoneNumberId}`
+                      : "Connect your WhatsApp Business account"
+                    }
+                  </p>
+                  {whatsappStatus?.connected && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      Last connected: {new Date(whatsappStatus.last_connected).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <Badge variant="outline">Not Connected</Badge>
-                <Button size="sm">Connect</Button>
+                {loadingWhatsApp ? (
+                  <Badge variant="outline">Loading...</Badge>
+                ) : whatsappStatus?.connected ? (
+                  <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-200 dark:border-green-800">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Not Connected</Badge>
+                )}
+                {whatsappStatus?.connected ? (
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={refreshWhatsAppStatus}
+                      disabled={loadingWhatsApp}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${loadingWhatsApp ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleFetchWhatsAppDMs}
+                      disabled={loadingWhatsApp}
+                      className="text-green-600 border-green-200 hover:bg-green-50 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/20"
+                    >
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      Fetch DMs
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setWhatsappModalOpen(true)}
+                      className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                    >
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Reconnect
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={refreshWhatsAppStatus}
+                      disabled={loadingWhatsApp}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${loadingWhatsApp ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setWhatsappModalOpen(true)}
+                      className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                    >
+                      Connect WhatsApp
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -417,12 +736,83 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="font-medium">Facebook Messenger</p>
-                  <p className="text-sm text-muted-foreground">Connect your Facebook Page</p>
+                  <p className="text-sm text-muted-foreground">
+                    {facebookStatus?.connected 
+                      ? `Connected with Page ID: ${facebookStatus.pageId}`
+                      : "Connect your Facebook Page"
+                    }
+                  </p>
+                  {facebookStatus?.connected && (
+                    <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                      Last connected: {new Date(facebookStatus.last_connected).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <Badge variant="outline">Not Connected</Badge>
-                <Button size="sm">Connect</Button>
+                {loadingFacebook ? (
+                  <Badge variant="outline">Loading...</Badge>
+                ) : facebookStatus?.connected ? (
+                  <Badge variant="default" className="bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="outline">Not Connected</Badge>
+                )}
+                {facebookStatus?.connected ? (
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={refreshFacebookStatus}
+                      disabled={loadingFacebook}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${loadingFacebook ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={handleFetchFacebookDMs}
+                      disabled={loadingFacebook}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                    >
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      Fetch DMs
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => setFacebookModalOpen(true)}
+                      className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
+                    >
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Reconnect
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={refreshFacebookStatus}
+                      disabled={loadingFacebook}
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
+                    >
+                      <RefreshCw className={`h-3 w-3 mr-1 ${loadingFacebook ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setFacebookModalOpen(true)}
+                      className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                    >
+                      Connect Facebook
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -729,6 +1119,20 @@ export default function SettingsPage() {
         open={instagramModalOpen} 
         onOpenChange={setInstagramModalOpen} 
         onSuccess={refreshInstagramStatus}
+      />
+
+      {/* Facebook Connect Modal */}
+      <FacebookConnectModal 
+        open={facebookModalOpen} 
+        onOpenChange={setFacebookModalOpen} 
+        onSuccess={refreshFacebookStatus}
+      />
+
+      {/* WhatsApp Connect Modal */}
+      <WhatsAppConnectModal 
+        open={whatsappModalOpen} 
+        onOpenChange={setWhatsappModalOpen} 
+        onSuccess={refreshWhatsAppStatus}
       />
     </div>
   )

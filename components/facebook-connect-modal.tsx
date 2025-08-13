@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  MessageSquare,
+  Facebook,
   CheckCircle,
   AlertCircle,
   User,
@@ -16,33 +16,31 @@ import {
   ArrowRight,
   ExternalLink,
   Info,
-  Phone,
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 
-interface WhatsAppConnectModalProps {
+interface FacebookConnectModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
 }
 
-export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsAppConnectModalProps) {
+export function FacebookConnectModal({ open, onOpenChange, onSuccess }: FacebookConnectModalProps) {
   const [step, setStep] = useState(1)
-  const [phoneNumberId, setPhoneNumberId] = useState("")
+  const [pageId, setPageId] = useState("")
   const [accessToken, setAccessToken] = useState("")
-  const [verifyToken, setVerifyToken] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
 
   const { user, userProfile } = useAuth()
 
-  const handlePhoneNumberIdSubmit = async () => {
-    if (!phoneNumberId || phoneNumberId.trim().length < 3) {
+  const handlePageIdSubmit = async () => {
+    if (!pageId || pageId.trim().length < 3) {
       toast({
-        title: "Invalid Phone Number ID",
-        description: "Please enter a valid WhatsApp Phone Number ID (minimum 3 characters)",
+        title: "Invalid Page ID",
+        description: "Please enter a valid Facebook Page ID (minimum 3 characters)",
         variant: "destructive",
       })
       return
@@ -58,7 +56,7 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
     if (!accessToken || accessToken.trim().length < 10) {
       toast({
         title: "Invalid Access Token",
-        description: "Please enter a valid WhatsApp access token",
+        description: "Please enter a valid Facebook access token",
         variant: "destructive",
       })
       return
@@ -70,34 +68,18 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
     setIsLoading(false)
   }
 
-  const handleVerifyTokenSubmit = async () => {
-    if (!verifyToken || verifyToken.trim().length < 5) {
-      toast({
-        title: "Invalid Verify Token",
-        description: "Please enter a valid WhatsApp verify token (minimum 5 characters)",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsLoading(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setStep(4)
-    setIsLoading(false)
-  }
-
   const handleConnectionTest = async () => {
     setIsLoading(true)
 
     try {
-      // Test the WhatsApp connection
-      const response = await fetch('/api/whatsapp/test-connection', {
+      // Test the Facebook connection
+      const response = await fetch('/api/facebook/test-connection', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          phoneNumberId: phoneNumberId,
+          pageId: pageId,
           accessToken: accessToken,
         }),
       })
@@ -105,12 +87,12 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to test WhatsApp connection")
+        throw new Error(data.error || "Failed to test Facebook connection")
       }
 
-      // Update user's WhatsApp connection
+      // Update user's Facebook connection
       if (user) {
-        console.log('Attempting to connect WhatsApp for user:', user.id)
+        console.log('Attempting to connect Facebook for user:', user.id)
         
         // Get the current session token
         const { data: { session } } = await supabase.auth.getSession()
@@ -120,16 +102,15 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
           throw new Error("No active session found. Please log in again.")
         }
         
-        const updateResponse = await fetch('/api/whatsapp/connect', {
+        const updateResponse = await fetch('/api/facebook/connect', {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${sessionToken}`,
           },
           body: JSON.stringify({
-            phoneNumberId: phoneNumberId,
+            pageId: pageId,
             accessToken: accessToken,
-            verifyToken: verifyToken,
             businessName: userProfile?.business_name || "My Business",
             connected: true,
           }),
@@ -137,18 +118,18 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
 
         if (!updateResponse.ok) {
           const updateError = await updateResponse.json()
-          console.error('WhatsApp connection failed:', updateError)
-          throw new Error(updateError.error || "Failed to update WhatsApp connection")
+          console.error('Facebook connection failed:', updateError)
+          throw new Error(updateError.error || "Failed to update Facebook connection")
         }
 
         const updateData = await updateResponse.json()
-        console.log('WhatsApp connection updated successfully:', updateData)
+        console.log('Facebook connection updated successfully:', updateData)
       } else {
         throw new Error("User not authenticated. Please log in and try again.")
       }
 
       setIsConnected(true)
-      setStep(5)
+      setStep(4)
 
       // Call the success callback to refresh the parent component
       if (onSuccess) {
@@ -156,14 +137,14 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
       }
 
       toast({
-        title: "WhatsApp Connected Successfully! 🎉",
+        title: "Facebook Connected Successfully! 🎉",
         description:
-          "Your WhatsApp Business account is now connected and ready to receive messages.",
+          "Your Facebook Page is now connected and ready to receive messages.",
       })
 
-      // Automatically fetch WhatsApp DMs after successful connection
+      // Automatically fetch Facebook DMs after successful connection
       try {
-        console.log('Automatically fetching WhatsApp DMs after connection...')
+        console.log('Automatically fetching Facebook DMs after connection...')
         
         const { data: { session } } = await supabase.auth.getSession()
         const sessionToken = session?.access_token
@@ -173,7 +154,7 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
           return
         }
         
-        const dmResponse = await fetch('/api/whatsapp/fetch-dms', {
+        const dmResponse = await fetch('/api/facebook/fetch-dms', {
           headers: {
             'Authorization': `Bearer ${sessionToken}`
           }
@@ -181,9 +162,9 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
 
         if (dmResponse.ok) {
           const dmData = await dmResponse.json()
-          console.log('Auto-fetched WhatsApp DMs:', dmData)
+          console.log('Auto-fetched Facebook DMs:', dmData)
           toast({
-            title: "WhatsApp DMs Loaded",
+            title: "Facebook DMs Loaded",
             description: `Successfully loaded ${dmData.data?.total_conversations || 0} conversations. You can now view them in the Chats page.`,
           })
         } else {
@@ -193,9 +174,9 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
         console.log('Auto-fetch DMs error (non-critical):', dmError)
       }
     } catch (error) {
-      console.error('WhatsApp connection error:', error)
+      console.error('Facebook connection error:', error)
       
-      let errorMessage = "Failed to connect WhatsApp"
+      let errorMessage = "Failed to connect Facebook"
       if (error instanceof Error) {
         errorMessage = error.message
       } else if (typeof error === 'string') {
@@ -208,7 +189,7 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
         variant: "destructive",
       })
       
-      setStep(4)
+      setStep(3)
     } finally {
       setIsLoading(false)
     }
@@ -216,9 +197,8 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
 
   const resetModal = () => {
     setStep(1)
-    setPhoneNumberId("")
+    setPageId("")
     setAccessToken("")
-    setVerifyToken("")
     setIsConnected(false)
     setIsLoading(false)
   }
@@ -235,61 +215,61 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <div className="h-8 w-8 bg-gradient-to-r from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-              <MessageSquare className="h-5 w-5 text-white" />
+            <div className="h-8 w-8 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+              <Facebook className="h-5 w-5 text-white" />
             </div>
-            Connect WhatsApp Business API
+            Connect Facebook Messenger
           </DialogTitle>
           <DialogDescription>
-            Connect your WhatsApp Business account to start receiving and responding to customer messages.
+            Connect your Facebook Page to start receiving and responding to customer messages.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Progress Indicator */}
           <div className="flex items-center justify-between">
-            {[1, 2, 3, 4, 5].map((stepNumber) => (
+            {[1, 2, 3, 4].map((stepNumber) => (
               <div key={stepNumber} className="flex items-center">
                 <div
                   className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
                     stepNumber < step
-                      ? "bg-gradient-to-r from-green-500 to-green-600 text-white"
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white"
                       : stepNumber === step
-                        ? "bg-green-500 text-white"
+                        ? "bg-blue-500 text-white"
                         : "bg-gray-200 text-gray-600"
                   }`}
                 >
                   {stepNumber < step ? <CheckCircle className="h-4 w-4" /> : stepNumber}
                 </div>
-                {stepNumber < 5 && (
-                  <div className={`h-1 w-8 sm:w-12 mx-2 ${stepNumber < step ? "bg-gradient-to-r from-green-500 to-green-600" : "bg-gray-200"}`} />
+                {stepNumber < 4 && (
+                  <div className={`h-1 w-8 sm:w-12 mx-2 ${stepNumber < step ? "bg-gradient-to-r from-blue-500 to-blue-600" : "bg-gray-200"}`} />
                 )}
               </div>
             ))}
           </div>
 
-          {/* Step 1: Phone Number ID */}
+          {/* Step 1: Facebook Page ID */}
           {step === 1 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Phone className="h-5 w-5 text-green-600" />
-                  Step 1: Enter Your WhatsApp Phone Number ID
+                  <User className="h-5 w-5 text-blue-600" />
+                  Step 1: Enter Your Facebook Page ID
                 </CardTitle>
-                <CardDescription>Enter the Phone Number ID from your WhatsApp Business API setup</CardDescription>
+                <CardDescription>Enter the ID of the Facebook Page you want to connect</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Phone Number ID</Label>
+                  <Label>Facebook Page ID</Label>
                   <Input
                     type="text"
                     placeholder="123456789012345"
-                    value={phoneNumberId}
-                    onChange={(e) => setPhoneNumberId(e.target.value.replace(/[^0-9]/g, ""))}
+                    value={pageId}
+                    onChange={(e) => setPageId(e.target.value.replace(/[^0-9]/g, ""))}
                     className="text-base font-mono"
                   />
                   <p className="text-sm text-gray-600">
-                    Phone Number ID: <span className="font-mono">{phoneNumberId || "123456789012345"}</span>
+                    Page ID: <span className="font-mono">{pageId || "123456789012345"}</span>
                   </p>
                 </div>
 
@@ -297,12 +277,11 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
                   <div className="flex items-start gap-3">
                     <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div className="text-sm">
-                      <p className="font-medium text-blue-900">How to find your Phone Number ID:</p>
+                      <p className="font-medium text-blue-900">How to find your Page ID:</p>
                       <ol className="text-blue-700 list-decimal list-inside space-y-1 mt-2">
-                        <li>Go to <a href="https://developers.facebook.com/" target="_blank" rel="noopener noreferrer" className="underline flex items-center gap-1">Facebook Developers <ExternalLink className="h-3 w-3" /></a></li>
-                        <li>Navigate to your WhatsApp Business app</li>
-                        <li>Go to "WhatsApp" → "Getting Started"</li>
-                        <li>Find "Phone number ID" in the API setup</li>
+                        <li>Go to your Facebook Page</li>
+                        <li>Click on "About" in the left sidebar</li>
+                        <li>Scroll down to find "Page ID"</li>
                         <li>Copy the numeric ID (e.g., 123456789012345)</li>
                       </ol>
                     </div>
@@ -310,9 +289,9 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
                 </div>
 
                 <Button
-                  onClick={handlePhoneNumberIdSubmit}
+                  onClick={handlePageIdSubmit}
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                 >
                   {isLoading ? (
                     <>
@@ -335,11 +314,11 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-green-600" />
-                  Step 2: WhatsApp Access Token
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  Step 2: Facebook Access Token
                 </CardTitle>
                 <CardDescription>
-                  You need to provide a WhatsApp access token to connect your account. Follow the instructions below.
+                  You need to provide a Facebook access token to connect your page. Follow the instructions below.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -347,7 +326,7 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
                   <Label>Access Token</Label>
                   <Input
                     type="password"
-                    placeholder="Enter your WhatsApp access token"
+                    placeholder="Enter your Facebook access token"
                     value={accessToken}
                     onChange={(e) => setAccessToken(e.target.value)}
                     className="text-base font-mono"
@@ -361,9 +340,10 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
                       <p className="font-medium text-blue-900">How to get your access token:</p>
                       <ol className="text-blue-700 list-decimal list-inside space-y-1 mt-2">
                         <li>Go to <a href="https://developers.facebook.com/" target="_blank" rel="noopener noreferrer" className="underline flex items-center gap-1">Facebook Developers <ExternalLink className="h-3 w-3" /></a></li>
-                        <li>Navigate to your WhatsApp Business app</li>
-                        <li>Go to "WhatsApp" → "Getting Started"</li>
-                        <li>Click "Generate token" to create a new access token</li>
+                        <li>Create a new app or select an existing one</li>
+                        <li>Add <strong>Messenger</strong> product to your app</li>
+                        <li>Set app to <strong>Development Mode</strong></li>
+                        <li>Generate a <strong>Page Access Token</strong></li>
                         <li>Copy the token and paste it above</li>
                       </ol>
                     </div>
@@ -377,7 +357,7 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
                   <Button
                     onClick={handleAccessTokenSubmit}
                     disabled={isLoading}
-                    className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                   >
                     {isLoading ? (
                       <>
@@ -393,94 +373,30 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
             </Card>
           )}
 
-          {/* Step 3: Verify Token */}
+          {/* Step 3: Connection Test */}
           {step === 3 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-green-600" />
-                  Step 3: WhatsApp Verify Token
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  Step 3: Test Connection
                 </CardTitle>
-                <CardDescription>
-                  Set a verify token for webhook verification. This can be any string you choose.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Verify Token</Label>
-                  <Input
-                    type="text"
-                    placeholder="Enter your verify token"
-                    value={verifyToken}
-                    onChange={(e) => setVerifyToken(e.target.value)}
-                    className="text-base"
-                  />
-                  <p className="text-sm text-gray-600">
-                    This token is used to verify webhook requests from WhatsApp
-                  </p>
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm">
-                      <p className="font-medium text-blue-900">About the Verify Token:</p>
-                      <p className="text-blue-700">
-                        The verify token is used to authenticate webhook requests from WhatsApp. 
-                        You can choose any secure string. Make sure to use the same token when 
-                        setting up your webhook in the Facebook Developer Console.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
-                    Back
-                  </Button>
-                  <Button
-                    onClick={handleVerifyTokenSubmit}
-                    disabled={isLoading}
-                    className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      "Continue"
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Step 4: Connection Test */}
-          {step === 4 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-green-600" />
-                  Step 4: Test Connection
-                </CardTitle>
-                <CardDescription>Test your WhatsApp connection to ensure everything is working properly</CardDescription>
+                <CardDescription>Test your Facebook connection to ensure everything is working properly</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Phone Number ID</Label>
+                    <Label>Facebook Page ID</Label>
                     <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                      <Phone className="h-5 w-5 text-green-600" />
-                      <span className="font-medium">{phoneNumberId}</span>
+                      <Facebook className="h-5 w-5 text-blue-600" />
+                      <span className="font-medium">{pageId}</span>
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label>Business Name</Label>
                     <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
-                      <User className="h-5 w-5 text-green-600" />
+                      <User className="h-5 w-5 text-blue-600" />
                       <span className="font-medium">{userProfile?.business_name || "My Business"}</span>
                     </div>
                   </div>
@@ -492,20 +408,20 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
                     <div className="text-sm">
                       <p className="font-medium text-green-900">Ready to Connect!</p>
                       <p className="text-green-700">
-                        Your WhatsApp Business account is configured and ready. Click "Test Connection" to verify the integration.
+                        Your Facebook Page is configured and ready. Click "Test Connection" to verify the integration.
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setStep(3)} className="flex-1">
+                  <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
                     Back
                   </Button>
                   <Button
                     onClick={handleConnectionTest}
                     disabled={isLoading}
-                    className="flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                    className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                   >
                     {isLoading ? (
                       <>
@@ -521,43 +437,42 @@ export function WhatsAppConnectModal({ open, onOpenChange, onSuccess }: WhatsApp
             </Card>
           )}
 
-          {/* Step 5: Success */}
-          {step === 5 && (
-            <Card className="border-green-200 bg-green-50">
+          {/* Step 4: Success */}
+          {step === 4 && (
+            <Card className="border-blue-200 bg-blue-50">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-green-800">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                  WhatsApp Connected Successfully!
+                <CardTitle className="flex items-center gap-2 text-blue-800">
+                  <CheckCircle className="h-6 w-6 text-blue-600" />
+                  Facebook Connected Successfully!
                 </CardTitle>
-                <CardDescription className="text-green-700">
-                  Your WhatsApp Business account is now connected and ready to receive messages
+                <CardDescription className="text-blue-700">
+                  Your Facebook Page is now connected and ready to receive messages
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="bg-white p-4 rounded-lg border border-green-200">
-                    <h4 className="font-medium text-green-800 mb-2">Phone Number ID</h4>
-                    <p className="text-sm text-green-700 font-mono">{phoneNumberId}</p>
+                  <div className="bg-white p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-800 mb-2">Facebook Page ID</h4>
+                    <p className="text-sm text-blue-700 font-mono">{pageId}</p>
                   </div>
-                  <div className="bg-white p-4 rounded-lg border border-green-200">
-                    <h4 className="font-medium text-green-800 mb-2">Business Name</h4>
-                    <p className="text-sm text-green-700">{userProfile?.business_name || "My Business"}</p>
+                  <div className="bg-white p-4 rounded-lg border border-blue-200">
+                    <h4 className="font-medium text-blue-800 mb-2">Business Name</h4>
+                    <p className="text-sm text-blue-700">{userProfile?.business_name || "My Business"}</p>
                   </div>
                 </div>
 
-                <div className="bg-white p-4 rounded-lg border border-green-200">
-                  <h4 className="font-medium text-green-800 mb-2">What's Available:</h4>
-                  <ul className="text-sm text-green-700 space-y-1">
-                    <li>• Receive messages from WhatsApp Business</li>
+                <div className="bg-white p-4 rounded-lg border border-blue-200">
+                  <h4 className="font-medium text-blue-800 mb-2">What's Available:</h4>
+                  <ul className="text-sm text-blue-700 space-y-1">
+                    <li>• Receive messages from Facebook Messenger</li>
                     <li>• Send responses to customers</li>
                     <li>• View conversation history</li>
                     <li>• Manage customer inquiries</li>
-                    <li>• Webhook integration for real-time updates</li>
                   </ul>
                 </div>
 
-                <Button onClick={handleClose} className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800">
-                  Start Using WhatsApp Business
+                <Button onClick={handleClose} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+                  Start Using Facebook Messenger
                 </Button>
               </CardContent>
             </Card>

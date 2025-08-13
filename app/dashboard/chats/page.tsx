@@ -382,6 +382,104 @@ export default function ChatsPage() {
     }
   }, [user?.id, fetchChats])
 
+  const fetchFacebookDMs = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to fetch Facebook DMs",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch('/api/facebook/fetch-dms', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to fetch Facebook DMs")
+      }
+
+      const data = await response.json()
+      
+      if (data.success) {
+        console.log('[fetchFacebookDMs] Success! Data:', data)
+        // Refresh chats to include the new Facebook conversations
+        await fetchChats()
+        toast({
+          title: "Facebook DMs Fetched",
+          description: `Successfully loaded ${data.data.total_conversations} conversations`,
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching Facebook DMs:", error)
+      toast({
+        title: "Failed to fetch Facebook DMs",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
+    }
+  }, [user?.id, fetchChats])
+
+  const fetchWhatsAppDMs = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      
+      if (!accessToken) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in again to fetch WhatsApp DMs",
+          variant: "destructive",
+        })
+        return
+      }
+
+      const response = await fetch('/api/whatsapp/fetch-dms', {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || "Failed to fetch WhatsApp DMs")
+      }
+
+      const data = await response.json()
+      
+      if (data.success) {
+        console.log('[fetchWhatsAppDMs] Success! Data:', data)
+        // Refresh chats to include the new WhatsApp conversations
+        await fetchChats()
+        toast({
+          title: "WhatsApp DMs Fetched",
+          description: `Successfully loaded ${data.data.total_conversations} conversations`,
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching WhatsApp DMs:", error)
+      toast({
+        title: "Failed to fetch WhatsApp DMs",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      })
+    }
+  }, [user?.id, fetchChats])
+
   const sendMessage = useCallback(async () => {
     if (!newMessage.trim() || !selectedChat || isSending) return
 
@@ -437,6 +535,55 @@ export default function ChatsPage() {
           toast({
             title: "Message Sent",
             description: result.note || "Message sent successfully",
+          })
+        }
+        
+        return
+      }
+
+      // For Facebook chats, use the Facebook API
+      if (selectedChat.platform === "facebook") {
+        apiEndpoint = '/api/facebook/send-message'
+        
+        // Get the current session token
+        const { data: { session } } = await supabase.auth.getSession()
+        const accessToken = session?.access_token
+        
+        if (!accessToken) {
+          throw new Error("Authentication failed. Please log in again.")
+        }
+
+        requestBody = {
+          chatId: selectedChat.id,
+          message: newMessage.trim(),
+          messageType: "text"
+        }
+
+        const response = await fetch(apiEndpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`
+          },
+          body: JSON.stringify(requestBody),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to send Facebook message")
+        }
+
+        const result = await response.json()
+        
+        if (result.success) {
+          setNewMessage("")
+          // Refresh messages and chats
+          await fetchMessages(selectedChat.id)
+          await fetchChats()
+          
+          toast({
+            title: "Message Sent",
+            description: result.message || "Message sent successfully",
           })
         }
         
@@ -628,6 +775,24 @@ export default function ChatsPage() {
           >
             <Instagram className="mr-2 h-4 w-4" />
             Fetch Instagram DMs
+          </Button>
+          <Button 
+            variant="outline" 
+            className="font-medium bg-transparent text-sm sm:text-base"
+            onClick={fetchFacebookDMs}
+            disabled={pageLoading}
+          >
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Fetch Facebook DMs
+          </Button>
+          <Button 
+            variant="outline" 
+            className="font-medium bg-transparent text-sm sm:text-base"
+            onClick={fetchWhatsAppDMs}
+            disabled={pageLoading}
+          >
+            <MessageSquare className="mr-2 h-4 w-4" />
+            Fetch WhatsApp DMs
           </Button>
           <Button variant="outline" className="font-medium bg-transparent text-sm sm:text-base">
             <Filter className="mr-2 h-4 w-4" />
