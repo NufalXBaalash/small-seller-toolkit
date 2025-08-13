@@ -102,7 +102,6 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              userId: user.id,
               instagramUsername: instagramUsername,
               accessToken: accessToken,
               businessName: userProfile?.business_name || "My Business",
@@ -118,7 +117,6 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              userId: user.id,
               instagramUsername: instagramUsername,
               accessToken: accessToken,
               businessName: userProfile?.business_name || "My Business",

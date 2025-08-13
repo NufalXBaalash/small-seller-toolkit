@@ -21,19 +21,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log('Request body:', body)
     
-    const { userId, instagramUsername, accessToken, businessName, connected } = body
+    const { instagramUsername, accessToken, businessName, connected } = body
 
-    console.log('Parsed request data:', { userId, instagramUsername, businessName, connected })
+    console.log('Parsed request data:', { instagramUsername, businessName, connected })
 
     // Validate required fields
-    if (!userId) {
-      console.log('Missing userId')
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      )
-    }
-
     if (!instagramUsername) {
       console.log('Missing instagramUsername')
       return NextResponse.json(
@@ -53,40 +45,89 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient()
     console.log('Supabase client created')
 
-    // First, check if the user exists and get user details
-    console.log('Looking up user with ID:', userId)
-    const { data: user, error: userError } = await supabase
+    // Get the authenticated user from Supabase auth instead of relying on passed userId
+    console.log('Getting authenticated user from Supabase auth...')
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError) {
+      console.log('Auth error:', authError)
+      return NextResponse.json(
+        { 
+          error: "Authentication failed",
+          details: authError.message,
+          suggestion: "Please ensure you are logged in and try again"
+        },
+        { status: 401 }
+      )
+    }
+
+    if (!authUser) {
+      console.log('No authenticated user found')
+      return NextResponse.json(
+        { 
+          error: "No authenticated user found",
+          suggestion: "Please log in and try again"
+        },
+        { status: 401 }
+      )
+    }
+
+    console.log('Authenticated user found:', { id: authUser.id, email: authUser.email })
+
+    // Now check if the user exists in the users table
+    console.log('Looking up user in database with ID:', authUser.id)
+    let { data: user, error: userError } = await supabase
       .from("users")
       .select("id, email, created_at")
-      .eq("id", userId)
-      .single()
+      .eq("id", authUser.id)
+      .maybeSingle() // Use maybeSingle instead of single to avoid the multiple rows error
 
     if (userError) {
       console.log('User lookup error:', userError)
       return NextResponse.json(
         { 
-          error: "User not found",
+          error: "Database error when looking up user",
           details: userError.message,
-          userId: userId,
-          suggestion: "Please ensure you are logged in and try again"
+          userId: authUser.id,
+          suggestion: "Please try again or contact support if the issue persists"
         },
-        { status: 404 }
+        { status: 500 }
       )
     }
 
     if (!user) {
-      console.log('No user returned from database')
-      return NextResponse.json(
-        { 
-          error: "User not found",
-          details: "No user data returned from database",
-          userId: userId
-        },
-        { status: 404 }
-      )
+      console.log('User not found in database, creating user record...')
+      
+      // Try to create the user record if it doesn't exist
+      const { data: newUser, error: createError } = await supabase
+        .from("users")
+        .insert({
+          id: authUser.id,
+          email: authUser.email,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select("id, email, created_at")
+        .single()
+
+      if (createError) {
+        console.log('Failed to create user record:', createError)
+        return NextResponse.json(
+          { 
+            error: "Failed to create user record",
+            details: createError.message,
+            userId: authUser.id,
+            suggestion: "Please try again or contact support"
+          },
+          { status: 500 }
+        )
+      }
+
+      console.log('User record created successfully:', newUser)
+      user = newUser
     }
 
-    console.log('User found:', { id: user.id, email: user.email, created_at: user.created_at })
+    console.log('User confirmed in database:', { id: user.id, email: user.email, created_at: user.created_at })
 
     // Try to update user_connections table first
     let connectionSuccess = false
@@ -99,7 +140,7 @@ export async function POST(request: NextRequest) {
       const { data: connectionsData, error: connError } = await supabase
         .from("user_connections")
         .upsert({
-          user_id: userId,
+          user_id: user.id,
           platform: "instagram",
           platform_username: instagramUsername,
           access_token: accessToken,
@@ -134,12 +175,14 @@ export async function POST(request: NextRequest) {
       try {
         const { data: profileData, error: profileError } = await supabase
           .from("user_profiles")
-          .update({
+          .upsert({
+            user_id: user.id,
             instagram_username: instagramUsername,
             instagram_connected: connected !== undefined ? connected : true,
             updated_at: new Date().toISOString()
+          }, {
+            onConflict: "user_id"
           })
-          .eq("user_id", userId)
           .select()
           .single()
 
@@ -168,7 +211,7 @@ export async function POST(request: NextRequest) {
             instagram_connected: connected !== undefined ? connected : true,
             updated_at: new Date().toISOString()
           })
-          .eq("id", userId)
+          .eq("id", user.id)
           .select()
           .single()
 
@@ -217,7 +260,7 @@ export async function POST(request: NextRequest) {
           details: errorDetails,
           suggestion: "Please run the Instagram setup script again or check database structure.",
           debug: {
-            userId: userId,
+            userId: user.id,
             userFound: !!user,
             tablesTried: ['user_connections', 'user_profiles', 'users'],
             connectionMethod: connectionMethod

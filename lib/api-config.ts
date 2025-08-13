@@ -25,6 +25,7 @@ export const INSTAGRAM_ENDPOINTS = {
   VERIFY_SETUP: '/api/instagram/verify-setup',
   SIMPLE_SETUP: '/api/instagram/simple-setup',
   DEBUG_USER: '/api/instagram/debug-user',
+  TEST_AUTH: '/api/instagram/test-auth',
   SEND_MESSAGE: '/api/instagram/send-message',
   WEBHOOK: '/api/instagram/webhook',
 } as const
