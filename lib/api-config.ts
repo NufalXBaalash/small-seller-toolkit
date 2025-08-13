@@ -23,6 +23,7 @@ export const INSTAGRAM_ENDPOINTS = {
   TEST_DB: '/api/instagram/test-db',
   TEST_DB_STRUCTURE: '/api/instagram/test-db-structure',
   VERIFY_SETUP: '/api/instagram/verify-setup',
+  SIMPLE_SETUP: '/api/instagram/simple-setup',
   SEND_MESSAGE: '/api/instagram/send-message',
   WEBHOOK: '/api/instagram/webhook',
 } as const
