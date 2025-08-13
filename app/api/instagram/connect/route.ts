@@ -193,6 +193,26 @@ export async function POST(request: NextRequest) {
         connectionSuccess = true
         connectionData = connectionsData
         connectionMethod = 'user_connections_table'
+        
+        // Also update the users table to keep it in sync
+        try {
+          const { error: userUpdateError } = await supabase
+            .from("users")
+            .update({
+              instagram_username: instagramUsername,
+              instagram_connected: connected !== undefined ? connected : true,
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", user.id)
+
+          if (!userUpdateError) {
+            console.log('Users table also updated successfully')
+          } else {
+            console.log('Users table update error (non-critical):', userUpdateError)
+          }
+        } catch (userError) {
+          console.log('Users table update failed (non-critical):', userError)
+        }
       } else {
         connectionError = connError
         console.log('user_connections table error:', connError)

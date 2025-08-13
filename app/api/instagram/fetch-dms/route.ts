@@ -253,35 +253,39 @@ export async function GET(request: NextRequest) {
           console.log('Updated existing Instagram chat:', chatId)
         }
 
-        // Create or update messages for this chat
-        for (const message of conversation.messages) {
-          // Check if message already exists
-          const { data: existingMessage } = await supabase
-            .from('messages')
-            .select('id')
-            .eq('chat_id', chatId)
-            .eq('content', message.content)
-            .eq('created_at', message.created_at)
-            .single()
+                 // Create or update messages for this chat
+         for (const message of conversation.messages) {
+           // Check if message already exists
+           const { data: existingMessage } = await supabase
+             .from('messages')
+             .select('id')
+             .eq('chat_id', chatId)
+             .eq('content', message.content)
+             .eq('created_at', message.created_at)
+             .single()
 
-          if (!existingMessage) {
-            // Create new message
-            const { error: messageError } = await supabase
-              .from('messages')
-              .insert({
-                chat_id: chatId,
-                sender_type: message.sender_type,
-                content: message.content,
-                message_type: message.message_type,
-                is_read: message.is_read,
-                created_at: message.created_at
-              })
+           if (!existingMessage) {
+             // Create new message
+             const { error: messageError } = await supabase
+               .from('messages')
+               .insert({
+                 chat_id: chatId,
+                 sender_type: message.sender_type,
+                 content: message.content,
+                 message_type: message.message_type,
+                 is_read: message.is_read,
+                 created_at: message.created_at
+               })
 
-            if (messageError) {
-              console.log('Failed to create message:', messageError)
-            }
-          }
-        }
+             if (messageError) {
+               console.log('Failed to create message:', messageError)
+             } else {
+               console.log('Successfully created message for chat:', chatId)
+             }
+           } else {
+             console.log('Message already exists, skipping creation')
+           }
+         }
 
         // Add to processed chats
         processedChats.push({
