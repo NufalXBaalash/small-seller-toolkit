@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/hooks/use-toast"
 import { InstagramConnectModal } from "@/components/instagram-connect-modal"
 import { getInstagramConnectionStatus } from "@/lib/supabase"
+import { getInstagramApiUrl } from "@/lib/api-config"
 
 export default function SettingsPage() {
   const { userProfile, updateProfile, user } = useAuth()
@@ -33,6 +34,8 @@ export default function SettingsPage() {
     phone_number: userProfile?.phone_number || "",
   })
   const [instagramModalOpen, setInstagramModalOpen] = useState(false)
+
+
 
   // Update form data when userProfile changes
   useEffect(() => {
@@ -96,7 +99,7 @@ export default function SettingsPage() {
       // Call API to disconnect Instagram - try main endpoint first, then fallback
       let response
       try {
-        response = await fetch('/api/instagram/connect', {
+        response = await fetch(getInstagramApiUrl('CONNECT'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -112,7 +115,7 @@ export default function SettingsPage() {
       } catch (error) {
         console.log('Main endpoint failed, trying alternative:', error)
         // Fallback to alternative endpoint
-        response = await fetch('/api/instagram/connect-v2', {
+        response = await fetch(getInstagramApiUrl('CONNECT_V2'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

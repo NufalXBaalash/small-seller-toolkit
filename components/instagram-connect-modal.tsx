@@ -26,6 +26,7 @@ import {
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
+import { getInstagramApiUrl } from "@/lib/api-config"
 
 interface InstagramConnectModalProps {
   open: boolean
@@ -43,6 +44,8 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
   const [connectionMethod, setConnectionMethod] = useState<"username" | "business">("username")
 
   const { user, userProfile } = useAuth()
+
+
 
   const handleUsernameSubmit = async () => {
     if (!instagramUsername || instagramUsername.trim().length < 3) {
@@ -91,7 +94,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
 
     try {
       // Test the Instagram connection
-      const response = await fetch("/api/instagram/test-connection", {
+      const response = await fetch(getInstagramApiUrl('TEST_CONNECTION'), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -113,7 +116,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
         // Try the main endpoint first, then fallback to alternatives
         let updateResponse
         try {
-          updateResponse = await fetch("/api/instagram/connect", {
+          updateResponse = await fetch(getInstagramApiUrl('CONNECT'), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -129,7 +132,7 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
         } catch (error) {
           console.log('Main endpoint failed, trying alternative:', error)
           // Fallback to alternative endpoint
-          updateResponse = await fetch("/api/instagram/connect-new", {
+          updateResponse = await fetch(getInstagramApiUrl('CONNECT_NEW'), {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
