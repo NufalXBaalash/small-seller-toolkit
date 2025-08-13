@@ -66,6 +66,11 @@ export async function GET(request: NextRequest) {
 
     console.log('User connections data:', userConnections)
     console.log('User connections error:', connectionsError)
+    
+    // Log the first connection details if it exists
+    if (userConnections && userConnections.length > 0) {
+      console.log('First Instagram connection details:', userConnections[0])
+    }
 
     // Check users table
     const { data: userData, error: userError } = await supabase

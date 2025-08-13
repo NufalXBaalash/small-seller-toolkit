@@ -79,12 +79,12 @@ export async function POST(request: NextRequest) {
 
     if (existingConnection) {
       // Disconnect Instagram by updating user_connections table
+      // Only update columns that exist in the table
       const { error: disconnectError } = await supabase
         .from('user_connections')
         .update({
           connected: false,
           access_token: null,
-          refresh_token: null,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', authUser.id)
