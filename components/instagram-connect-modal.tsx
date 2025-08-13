@@ -188,9 +188,19 @@ export function InstagramConnectModal({ open, onOpenChange, onSuccess }: Instagr
       // Automatically fetch Instagram DMs after successful connection
       try {
         console.log('Automatically fetching Instagram DMs after connection...')
+        
+        // Get the current Supabase session token for authentication
+        const { data: { session } } = await supabase.auth.getSession()
+        const sessionToken = session?.access_token
+        
+        if (!sessionToken) {
+          console.log('No session token available for auto-fetch DMs')
+          return
+        }
+        
         const dmResponse = await fetch('/api/instagram/fetch-dms', {
           headers: {
-            'Authorization': `Bearer ${accessToken}`
+            'Authorization': `Bearer ${sessionToken}`
           }
         })
 
